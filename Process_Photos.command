@@ -2,7 +2,7 @@
 cd "$(dirname "$0")"
 
 echo "=========================================="
-echo " 🪑 Mac Chair Tracker Launcher"
+echo " 🪑 Mac Seating Tracker Launcher"
 echo "=========================================="
 
 # Activate virtualenv if available

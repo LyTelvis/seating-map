@@ -24,9 +24,9 @@ WORKSPACE_DIR = os.path.dirname(os.path.abspath(__file__))
 INBOX_DIR = os.path.join(WORKSPACE_DIR, "01_Inbox")
 MAPPED_DIR = os.path.join(WORKSPACE_DIR, "02_Mapped")
 NEEDS_GPS_DIR = os.path.join(WORKSPACE_DIR, "03_Needs_GPS")
-DATA_FILE = os.path.join(WORKSPACE_DIR, "chairs_data.json")
-CSV_FILE = os.path.join(WORKSPACE_DIR, "chairs_map.csv")
-MAP_HTML_FILE = os.path.join(WORKSPACE_DIR, "chairs_map.html")
+DATA_FILE = os.path.join(WORKSPACE_DIR, "seating_data.json")
+CSV_FILE = os.path.join(WORKSPACE_DIR, "seating_map.csv")
+MAP_HTML_FILE = os.path.join(WORKSPACE_DIR, "seating_map.html")
 
 PORT = 8000
 
@@ -69,8 +69,8 @@ def sync_to_github():
             return
         
         print("\n🔄 Syncing updates to GitHub (LyTelvis/chair-map)...")
-        subprocess.run(["git", "add", "chairs_data.json", "chairs_map.csv", "02_Mapped/"], cwd=WORKSPACE_DIR, capture_output=True)
-        commit_res = subprocess.run(["git", "commit", "-m", "Auto-update chair map data and photos"], cwd=WORKSPACE_DIR, capture_output=True, text=True)
+        subprocess.run(["git", "add", "seating_data.json", "seating_map.csv", "seating_map.html", "02_Mapped/"], cwd=WORKSPACE_DIR, capture_output=True)
+        commit_res = subprocess.run(["git", "commit", "-m", "Auto-update seating map data and photos"], cwd=WORKSPACE_DIR, capture_output=True, text=True)
         
         if "nothing to commit" in commit_res.stdout.lower() or "nothing to commit" in commit_res.stderr.lower():
             print("ℹ️ Everything up to date on GitHub.")
@@ -192,7 +192,7 @@ def process_inbox():
             rel_path = f"02_Mapped/{dest_filename}"
             now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-            item_id = f"chair_{int(datetime.now().timestamp())}_{processed_count}"
+            item_id = f"seating_{int(datetime.now().timestamp())}_{processed_count}"
             data.append({
                 "id": item_id,
                 "filename": dest_filename,
@@ -224,7 +224,7 @@ def process_inbox():
 
     return data
 
-class ChairMapHTTPHandler(http.server.SimpleHTTPRequestHandler):
+class SeatingMapHTTPHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=WORKSPACE_DIR, **kwargs)
 
@@ -275,7 +275,7 @@ def run_server():
     httpd = None
     for p in range(PORT, PORT + 20):
         try:
-            httpd = socketserver.TCPServer(("", p), ChairMapHTTPHandler)
+            httpd = socketserver.TCPServer(("", p), SeatingMapHTTPHandler)
             server_port = p
             break
         except OSError:
@@ -285,9 +285,9 @@ def run_server():
         print("Could not find free port for web server.")
         return
 
-    url = f"http://localhost:{server_port}/chairs_map.html?admin=true"
-    print(f"🚀 Map Web Server running at: http://localhost:{server_port}/")
-    print(f"🌐 Opening interactive map in browser...")
+    url = f"http://localhost:{server_port}/seating_map.html?admin=true"
+    print(f"🚀 Seating Map Web Server running at: http://localhost:{server_port}/")
+    print(f"🌐 Opening interactive seating map in browser...")
     webbrowser.open(url)
 
     try:

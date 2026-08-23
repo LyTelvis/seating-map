@@ -1,6 +1,6 @@
 [
   {
-    "id": "chair_1787455149_0",
+    "id": "seating_1787455149_0",
     "filename": "IMG_6142.jpeg",
     "image_path": "02_Mapped/IMG_6142.jpeg",
     "latitude": 49.231669,
@@ -9,7 +9,7 @@
     "comment": ""
   },
   {
-    "id": "chair_1787455210_0",
+    "id": "seating_1787455210_0",
     "filename": "IMG_6149.jpeg",
     "image_path": "02_Mapped/IMG_6149.jpeg",
     "latitude": 49.255775,
@@ -18,7 +18,7 @@
     "comment": ""
   },
   {
-    "id": "chair_1787455210_1",
+    "id": "seating_1787455210_1",
     "filename": "IMG_6148.jpeg",
     "image_path": "02_Mapped/IMG_6148.jpeg",
     "latitude": 49.251014,
@@ -27,7 +27,7 @@
     "comment": ""
   },
   {
-    "id": "chair_1787455210_2",
+    "id": "seating_1787455210_2",
     "filename": "IMG_6141.jpeg",
     "image_path": "02_Mapped/IMG_6141.jpeg",
     "latitude": 49.232083,
@@ -36,7 +36,7 @@
     "comment": ""
   },
   {
-    "id": "chair_1787455210_3",
+    "id": "seating_1787455210_3",
     "filename": "IMG_6140.jpeg",
     "image_path": "02_Mapped/IMG_6140.jpeg",
     "latitude": 49.232053,

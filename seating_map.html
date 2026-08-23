@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Interactive Chair Map</title>
+  <title>Interactive Seating Map</title>
   
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -241,9 +241,9 @@
 
   <div class="header-bar">
     <div class="header-title">
-      🪑 Public Chair Tracker
+      🪑 Public Seating Tracker
     </div>
-    <span class="header-badge" id="chair-count">0 chairs</span>
+    <span class="header-badge" id="seating-count">0 seating locations</span>
     <span class="admin-indicator" id="admin-tag" style="display: none;">Owner Edit Mode</span>
   </div>
 
@@ -280,7 +280,7 @@
     }
 
     // Custom Map Pin SVG Generator
-    function createPinHtml(color = '#0284c7', emoji = '🪑') {
+    function createPinHtml(color = '#ea4335', emoji = '🪑') {
       return `
         <div class="marker-pin-wrapper">
           <svg class="marker-pin-svg" viewBox="0 0 32 42" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -292,50 +292,51 @@
       `;
     }
 
-    async function loadChairsData() {
+    async function loadSeatingData() {
       try {
-        const response = await fetch('chairs_data.json?t=' + Date.now());
+        const response = await fetch('seating_data.json?t=' + Date.now());
         if (!response.ok) throw new Error('Data file not found');
-        const chairs = await response.json();
-        renderMarkers(chairs);
+        const seatingList = await response.json();
+        renderMarkers(seatingList);
       } catch (err) {
-        console.warn('Error loading chairs_data.json:', err);
+        console.warn('Error loading seating_data.json:', err);
       }
     }
 
-    function renderMarkers(chairs) {
+    function renderMarkers(seatingList) {
       markersGroup.clearLayers();
-      document.getElementById('chair-count').innerText = `${chairs.length} chair${chairs.length === 1 ? '' : 's'}`;
+      const count = seatingList.length;
+      document.getElementById('seating-count').innerText = `${count} seating location${count === 1 ? '' : 's'}`;
 
-      if (chairs.length === 0) return;
+      if (count === 0) return;
 
       const bounds = [];
 
-      chairs.forEach(chair => {
-        if (!chair.latitude || !chair.longitude) return;
+      seatingList.forEach(item => {
+        if (!item.latitude || !item.longitude) return;
 
-        const pos = [chair.latitude, chair.longitude];
+        const pos = [item.latitude, item.longitude];
         bounds.push(pos);
 
         // Standard Google Maps style pin icon
         const customIcon = L.divIcon({
-          html: createPinHtml('#ea4335', '🪑'), // Google Maps classic red pin
+          html: createPinHtml('#ea4335', '🪑'),
           className: 'custom-pin-div',
           iconSize: [32, 42],
           iconAnchor: [16, 42],
           popupAnchor: [0, -40]
         });
 
-        const imagePath = chair.image_path || '';
+        const imagePath = item.image_path || '';
 
         let popupContent = `
           <div class="popup-image-container">
-            <img src="${imagePath}" alt="Chair Photo" onclick="window.open('${imagePath}', '_blank')" />
+            <img src="${imagePath}" alt="Seating Photo" onclick="window.open('${imagePath}', '_blank')" />
           </div>
           <div class="popup-body">
             <div class="popup-meta">
-              <span>📍 ${chair.latitude.toFixed(5)}, ${chair.longitude.toFixed(5)}</span>
-              <span>📅 ${chair.timestamp || 'N/A'}</span>
+              <span>📍 ${item.latitude.toFixed(5)}, ${item.longitude.toFixed(5)}</span>
+              <span>📅 ${item.timestamp || 'N/A'}</span>
             </div>
             <div class="popup-comment-section">
               <div class="popup-comment-label">Description / Comment:</div>
@@ -343,12 +344,12 @@
 
         if (isAdmin) {
           popupContent += `
-            <textarea id="comment-input-${chair.id}" class="popup-comment-textarea" placeholder="Add your notes about this chair...">${chair.comment || ''}</textarea>
-            <button class="save-btn" onclick="saveComment('${chair.id}')">Save Comment</button>
+            <textarea id="comment-input-${item.id}" class="popup-comment-textarea" placeholder="Add your notes about this seating...">${item.comment || ''}</textarea>
+            <button class="save-btn" onclick="saveComment('${item.id}')">Save Comment</button>
           `;
         } else {
           popupContent += `
-            <div class="popup-comment-text">${chair.comment ? chair.comment : '<em>No comment provided.</em>'}</div>
+            <div class="popup-comment-text">${item.comment ? item.comment : '<em>No comment provided.</em>'}</div>
           `;
         }
 
@@ -392,7 +393,7 @@
       }
     }
 
-    window.addEventListener('DOMContentLoaded', loadChairsData);
+    window.addEventListener('DOMContentLoaded', loadSeatingData);
   </script>
 </body>
 </html>
