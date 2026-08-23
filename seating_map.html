@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
@@ -22,6 +22,7 @@
       box-sizing: border-box;
       margin: 0;
       padding: 0;
+      -webkit-tap-highlight-color: transparent;
     }
 
     body, html {
@@ -57,7 +58,7 @@
       gap: 12px;
       flex-wrap: wrap;
       justify-content: center;
-      transition: opacity 0.3s ease;
+      transition: opacity 0.3s ease, transform 0.3s ease;
     }
 
     .header-title {
@@ -226,7 +227,7 @@
       pointer-events: none;
     }
 
-    /* Side Photo Display Panel Drawer (Shifted down to Center-Left of viewport) */
+    /* Side Photo Display Panel Drawer (Desktop Left Panel) */
     .side-photo-panel {
       position: absolute;
       top: 50%;
@@ -746,6 +747,97 @@
     .toast.show {
       opacity: 1;
     }
+
+    /* ==========================================================================
+       MOBILE RESPONSIVE STYLES (Screen Width <= 768px)
+       ========================================================================== */
+    @media (max-width: 768px) {
+      /* Search Bar Compact on Mobile */
+      .location-search-bar {
+        width: 94%;
+        top: 10px;
+        padding: 4px 8px;
+      }
+
+      .location-search-input {
+        font-size: 12px;
+      }
+
+      .location-search-btn {
+        padding: 5px 10px;
+        font-size: 11px;
+      }
+
+      /* View Mode Toggle Pill (Top Right) */
+      .mode-toggle-group {
+        top: 10px;
+        right: 8px;
+        padding: 2px;
+      }
+
+      .mode-toggle-btn {
+        padding: 4px 8px;
+        font-size: 11px;
+      }
+
+      /* Photo Panel Drawer -> Converts to Mobile Bottom Sheet Drawer */
+      .side-photo-panel {
+        top: auto;
+        bottom: 12px;
+        left: 3%;
+        width: 94%;
+        max-height: 65vh;
+        border-radius: 20px;
+        transform: translateY(130%);
+        box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.25);
+      }
+
+      .side-photo-panel.active {
+        transform: translateY(0);
+      }
+
+      .side-panel-img-container {
+        height: 170px;
+      }
+
+      .nav-arrow-btn {
+        width: 32px;
+        height: 32px;
+        font-size: 16px;
+      }
+
+      .side-panel-body {
+        padding: 12px;
+      }
+
+      /* Bottom Header Bar Compact & Centered */
+      .header-bar {
+        bottom: 12px;
+        padding: 6px 14px;
+        gap: 8px;
+        width: 92%;
+        max-width: 360px;
+      }
+
+      .header-title {
+        font-size: 12px;
+      }
+
+      .header-badge {
+        font-size: 11px;
+        padding: 2px 8px;
+      }
+
+      .view-btn {
+        padding: 3px 8px;
+        font-size: 11px;
+      }
+
+      .banner-container {
+        top: 56px;
+        width: 94%;
+      }
+    }
   </style>
 </head>
 <body>
@@ -1084,7 +1176,7 @@
       img.src = item.image_path || '';
       coords.innerText = `📍 ${item.latitude.toFixed(5)}, ${item.longitude.toFixed(5)}`;
 
-      // Configure adjacent left/right transparent overlay buttons (evaluating 2D distance in lat & lng)
+      // Configure adjacent left/right transparent overlay buttons
       const { prev, next } = getAdjacentPhotos(item);
       const btnLeft = document.getElementById('btn-nav-left');
       const btnRight = document.getElementById('btn-nav-right');
@@ -1167,15 +1259,30 @@
 
       panel.classList.add('active');
 
+      const isMobile = window.innerWidth <= 768;
+
+      // On mobile: fade out bottom header bar when photo bottom sheet is active
+      const headerBar = document.getElementById('header-bar');
+      if (isMobile && headerBar) {
+        headerBar.style.opacity = '0';
+        headerBar.style.pointerEvents = 'none';
+      }
+
       // Preserve current zoom level if user is zoomed in deeper than level 15
       const currentZoom = map.getZoom();
       const targetZoom = Math.max(currentZoom, 15);
 
-      // Calculate dynamic longitude offset proportional to zoom level so pin stays positioned ideally on the right
-      const lngOffset = 0.0070 / Math.pow(2, targetZoom - 15);
-      const balancedCenter = [item.latitude, item.longitude - lngOffset];
-
-      map.setView(balancedCenter, targetZoom, { animate: true });
+      // On Mobile: Offset latitude NORTH (+latOffset) so pin sits in top half of screen above bottom drawer
+      // On Desktop: Offset longitude WEST (-lngOffset) so pin sits to the RIGHT of left drawer
+      if (isMobile) {
+        const latOffset = 0.0035 / Math.pow(2, targetZoom - 15);
+        const balancedCenter = [item.latitude + latOffset, item.longitude];
+        map.setView(balancedCenter, targetZoom, { animate: true });
+      } else {
+        const lngOffset = 0.0070 / Math.pow(2, targetZoom - 15);
+        const balancedCenter = [item.latitude, item.longitude - lngOffset];
+        map.setView(balancedCenter, targetZoom, { animate: true });
+      }
     }
 
     function closeSidePanel() {
@@ -1183,6 +1290,12 @@
       if (panel) panel.classList.remove('active');
       activeSeatingItem = null;
       updateMarkerColors(null);
+
+      const headerBar = document.getElementById('header-bar');
+      if (headerBar) {
+        headerBar.style.opacity = '1';
+        headerBar.style.pointerEvents = 'auto';
+      }
     }
 
     function startRelocateMode(itemId) {
