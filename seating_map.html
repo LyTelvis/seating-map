@@ -1188,13 +1188,17 @@
       showToast(`📍 Click on the map to set location for ${filename}`);
     }
 
-    function exitPinMode() {
+    function exitPinModeWithoutReset() {
       activePinningFilename = null;
       activeRelocatingItem = null;
       document.getElementById('header-bar').style.display = 'flex';
       document.querySelector('.banner-container').style.display = 'flex';
       document.getElementById('pinning-bar').style.display = 'none';
       document.getElementById('map').style.cursor = '';
+    }
+
+    function exitPinMode() {
+      exitPinModeWithoutReset();
       if (tempMarker) {
         map.removeLayer(tempMarker);
         tempMarker = null;
@@ -1274,12 +1278,34 @@
         return;
       }
 
+      // 1. Immediately update local item & marker position on Leaflet map!
       if (activeRelocatingItem) {
         activeRelocatingItem.latitude = lat;
         activeRelocatingItem.longitude = lng;
-        localStorage.setItem('relocated_' + itemId, JSON.stringify({ lat, lng }));
       }
 
+      const entry = markerMap[itemId] || (activeRelocatingItem ? markerMap[activeRelocatingItem.id] : null);
+      if (entry && entry.marker) {
+        entry.marker.setLatLng([lat, lng]);
+        entry.item.latitude = lat;
+        entry.item.longitude = lng;
+      }
+
+      localStorage.setItem('relocated_' + itemId, JSON.stringify({ lat, lng }));
+
+      // 2. Remove temporary marker
+      if (tempMarker) {
+        map.removeLayer(tempMarker);
+        tempMarker = null;
+      }
+
+      // 3. Keep current zoom and view centered around new position
+      map.setView([lat, lng], map.getZoom(), { animate: true });
+
+      showToast(`✅ Pin moved to new location!`);
+      exitPinModeWithoutReset();
+
+      // 4. Send API update to server
       try {
         const apiUrl = getApiUrl('/api/update_location');
         const res = await fetch(apiUrl, {
@@ -1292,19 +1318,11 @@
           const result = await res.json();
           if (result.success) {
             showToast(`✅ Pin location updated & synced!`);
-            exitPinMode();
-            if (result.data) renderMarkers(result.data);
             return;
           }
         }
       } catch (e) {
-        console.warn('Local API update error, applying client-side relocate:', e);
-      }
-
-      showToast(`✅ Pin location updated!`);
-      exitPinMode();
-      if (activeRelocatingItem && markerMap[itemId]) {
-        markerMap[itemId].marker.setLatLng([lat, lng]);
+        console.warn('API update error:', e);
       }
     }
 
