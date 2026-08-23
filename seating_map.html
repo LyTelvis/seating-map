@@ -500,9 +500,9 @@
     }
 
     .marker-pin-wrapper.active-pin {
-      transform: scale(1.25) translateY(-5px);
+      transform: scale(1.28) translateY(-5px);
       z-index: 1000 !important;
-      filter: drop-shadow(0px 4px 10px rgba(2, 132, 199, 0.5));
+      filter: drop-shadow(0px 4px 12px rgba(2, 132, 199, 0.55));
     }
 
     .marker-pin-svg {
@@ -697,18 +697,35 @@
     let activePinningFilename = null;
 
     /**
-     * Create Pin HTML with 🪑 Emoji (Reverted to previous icon style)
-     * - Unselected Pins: Red body (#ea4335)
-     * - Selected Pin: Blue body (#0284c7)
+     * Create Vector Pin HTML
+     * - Unselected Pins: Red body (#ea4335) with Empty Chair icon (🪑)
+     * - Selected Pin: Blue body (#0284c7) with Person Sitting on Chair vector graphic!
      */
-    function createPinHtml(color = COLOR_UNSELECTED, emoji = '🪑', isActive = false) {
+    function createPinHtml(color = COLOR_UNSELECTED, isActive = false) {
+      if (isActive) {
+        // Selected Blue Pin with Person Sitting on Chair vector graphic
+        return `
+          <div class="marker-pin-wrapper active-pin">
+            <svg class="marker-pin-svg" viewBox="0 0 32 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M16 0C7.163 0 0 7.163 0 16C0 27.2 16 42 16 42C16 42 32 27.2 32 16C32 7.163 24.837 0 16 0Z" fill="${color}"/>
+              <circle cx="16" cy="15" r="10" fill="white"/>
+              <!-- Person Sitting on Chair SVG -->
+              <circle cx="14" cy="9.2" r="2.1" fill="#0284c7"/>
+              <path d="M13.2 11.8c-1.1 0-1.8.7-1.8 1.6v3.2c0 .3.3.6.6.6h4.5c.3 0 .6-.3.6-.6v-1.5h2.2c.5 0 .8-.4.8-.8v-1.5c0-.6-.4-1-1-1h-4.1z" fill="#0284c7"/>
+              <path d="M8 8v11M19.5 14v5M7 14.5h13.5" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round"/>
+            </svg>
+          </div>
+        `;
+      }
+
+      // Default Red Pin with Empty Chair Emoji
       return `
-        <div class="marker-pin-wrapper ${isActive ? 'active-pin' : ''}">
+        <div class="marker-pin-wrapper">
           <svg class="marker-pin-svg" viewBox="0 0 32 42" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M16 0C7.163 0 0 7.163 0 16C0 27.2 16 42 16 42C16 42 32 27.2 32 16C32 7.163 24.837 0 16 0Z" fill="${color}"/>
             <circle cx="16" cy="15" r="10" fill="white"/>
           </svg>
-          <div class="marker-pin-icon-inner">${emoji}</div>
+          <div class="marker-pin-icon-inner">🪑</div>
         </div>
       `;
     }
@@ -744,7 +761,7 @@
         const entry = markerMap[id];
         const isSelected = (id === selectedId);
         const color = isSelected ? COLOR_SELECTED : COLOR_UNSELECTED;
-        const iconHtml = createPinHtml(color, '🪑', isSelected);
+        const iconHtml = createPinHtml(color, isSelected);
 
         const newIcon = L.divIcon({
           html: iconHtml,
@@ -818,7 +835,7 @@
       const panel = document.getElementById('side-photo-panel');
       if (panel) panel.classList.remove('active');
       activeSeatingItem = null;
-      updateMarkerColors(null); // Reset all pins back to Red
+      updateMarkerColors(null); // Reset all pins back to Red empty chair
     }
 
     // Close side panel when clicking empty area on map
@@ -996,7 +1013,15 @@
       }
 
       const customIcon = L.divIcon({
-        html: createPinHtml('#3b82f6', '📍', true),
+        html: `
+          <div class="marker-pin-wrapper active-pin">
+            <svg class="marker-pin-svg" viewBox="0 0 32 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M16 0C7.163 0 0 7.163 0 16C0 27.2 16 42 16 42C16 42 32 27.2 32 16C32 7.163 24.837 0 16 0Z" fill="#3b82f6"/>
+              <circle cx="16" cy="15" r="10" fill="white"/>
+            </svg>
+            <div class="marker-pin-icon-inner">📍</div>
+          </div>
+        `,
         className: 'custom-pin-div',
         iconSize: [32, 42],
         iconAnchor: [16, 42]
@@ -1124,7 +1149,7 @@
         }
 
         const customIcon = L.divIcon({
-          html: createPinHtml(COLOR_UNSELECTED, '🪑', false), // Default: Red pin body
+          html: createPinHtml(COLOR_UNSELECTED, false), // Default: Red pin body with empty chair emoji
           className: 'custom-pin-div',
           iconSize: [32, 42],
           iconAnchor: [16, 42]
@@ -1134,7 +1159,7 @@
 
         markerMap[item.id] = { marker, item };
 
-        // On pin click: open side photo panel on LEFT, and set active marker color to BLUE
+        // On pin click: open side photo panel on LEFT, and set active marker to BLUE body with PERSON SITTING ON CHAIR graphic!
         marker.on('click', function(e) {
           L.DomEvent.stopPropagation(e);
           openSidePanel(item);
