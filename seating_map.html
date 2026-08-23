@@ -137,12 +137,12 @@
       pointer-events: none;
     }
 
-    /* Side Photo Display Panel Drawer (Positioned on the LEFT) */
+    /* Side Photo Display Panel Drawer (Shifted to left: 65px so + / - zoom buttons remain 100% visible) */
     .side-photo-panel {
       position: absolute;
       top: 20px;
-      left: 20px;
-      width: 360px;
+      left: 65px; /* Clear space for Leaflet + / - zoom buttons */
+      width: 350px;
       max-height: calc(100% - 100px);
       background: rgba(255, 255, 255, 0.98);
       backdrop-filter: blur(12px);
@@ -154,7 +154,7 @@
       flex-direction: column;
       overflow: hidden;
       transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
-      transform: translateX(-400px);
+      transform: translateX(-420px);
       opacity: 0;
       pointer-events: none;
     }
@@ -191,7 +191,7 @@
 
     .side-panel-img-container {
       width: 100%;
-      height: 250px; /* Larger photo display */
+      height: 240px;
       background-color: #f1f5f9;
       position: relative;
       overflow: hidden;
@@ -488,15 +488,21 @@
     /* Custom SVG Teardrop Map Pin Icon */
     .marker-pin-wrapper {
       position: relative;
-      width: 32px;
-      height: 42px;
+      width: 30px;
+      height: 40px;
       cursor: pointer;
-      filter: drop-shadow(0px 3px 6px rgba(0, 0, 0, 0.3));
+      filter: drop-shadow(0px 3px 5px rgba(0, 0, 0, 0.25));
       transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
 
-    .marker-pin-wrapper:hover, .marker-pin-wrapper.active {
-      transform: scale(1.2) translateY(-4px);
+    .marker-pin-wrapper:hover {
+      transform: scale(1.15) translateY(-3px);
+    }
+
+    .marker-pin-wrapper.active-pin {
+      transform: scale(1.25) translateY(-5px);
+      z-index: 1000 !important;
+      filter: drop-shadow(0px 4px 8px rgba(234, 67, 53, 0.5));
     }
 
     .marker-pin-svg {
@@ -618,7 +624,7 @@
     </div>
   </div>
 
-  <!-- Side Photo Display Panel Drawer (Positioned on the LEFT) -->
+  <!-- Side Photo Display Panel Drawer (Positioned left: 65px clear of zoom + / - buttons) -->
   <div class="side-photo-panel" id="side-photo-panel">
     <button class="side-panel-close-btn" onclick="closeSidePanel()">✕</button>
     <div class="side-panel-img-container">
@@ -671,6 +677,12 @@
     let metroVancouverBounds = [];
     let activeSeatingItem = null;
 
+    // Pin Color Palettes: Unselected = Light Slate Gray (#94a3b8), Selected = Vibrant Red (#ea4335)
+    const COLOR_UNSELECTED = '#94a3b8';
+    const COLOR_SELECTED = '#ea4335';
+
+    let markerMap = {}; // Map item.id -> { marker, item }
+
     // Initialize Map with CartoDB Positron (Light Minimalist) permanently
     const map = L.map('map', {
       zoomControl: true
@@ -684,6 +696,18 @@
     let markersGroup = L.featureGroup().addTo(map);
     let tempMarker = null;
     let activePinningFilename = null;
+
+    function createPinHtml(color = COLOR_UNSELECTED, emoji = '🪑', isActive = false) {
+      return `
+        <div class="marker-pin-wrapper ${isActive ? 'active-pin' : ''}">
+          <svg class="marker-pin-svg" viewBox="0 0 32 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M16 0C7.163 0 0 7.163 0 16C0 27.2 16 42 16 42C16 42 32 27.2 32 16C32 7.163 24.837 0 16 0Z" fill="${color}"/>
+            <circle cx="16" cy="15" r="10" fill="white"/>
+          </svg>
+          <div class="marker-pin-icon-inner">${emoji}</div>
+        </div>
+      `;
+    }
 
     function setMetroVancouverView() {
       closeSidePanel();
@@ -711,8 +735,28 @@
       }
     }
 
+    function updateMarkerColors(selectedId = null) {
+      Object.keys(markerMap).forEach(id => {
+        const entry = markerMap[id];
+        const isSelected = (id === selectedId);
+        const color = isSelected ? COLOR_SELECTED : COLOR_UNSELECTED;
+        const iconHtml = createPinHtml(color, '🪑', isSelected);
+
+        const newIcon = L.divIcon({
+          html: iconHtml,
+          className: 'custom-pin-div',
+          iconSize: [30, 40],
+          iconAnchor: [15, 40]
+        });
+
+        entry.marker.setIcon(newIcon);
+      });
+    }
+
     function openSidePanel(item) {
       activeSeatingItem = item;
+      updateMarkerColors(item.id);
+
       const panel = document.getElementById('side-photo-panel');
       const img = document.getElementById('side-panel-img');
       const coords = document.getElementById('side-panel-coords');
@@ -761,8 +805,8 @@
       panel.classList.add('active');
 
       // Reduced zoom-in level (15 instead of 17)
-      // Offset longitude west (-0.0065) so clicked pin icon positions nicely on the RIGHT for a balanced view
-      const balancedCenter = [item.latitude, item.longitude - 0.0065];
+      // Offset longitude west (-0.0070) so clicked pin icon positions cleanly to the RIGHT of the photo panel
+      const balancedCenter = [item.latitude, item.longitude - 0.0070];
       map.setView(balancedCenter, 15, { animate: true });
     }
 
@@ -770,6 +814,7 @@
       const panel = document.getElementById('side-photo-panel');
       if (panel) panel.classList.remove('active');
       activeSeatingItem = null;
+      updateMarkerColors(null); // Reset all pins back to light color
     }
 
     // Close side panel when clicking empty area on map
@@ -784,18 +829,6 @@
       toast.innerText = message;
       toast.classList.add('show');
       setTimeout(() => toast.classList.remove('show'), 2500);
-    }
-
-    function createPinHtml(color = '#ea4335', emoji = '🪑') {
-      return `
-        <div class="marker-pin-wrapper">
-          <svg class="marker-pin-svg" viewBox="0 0 32 42" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M16 0C7.163 0 0 7.163 0 16C0 27.2 16 42 16 42C16 42 32 27.2 32 16C32 7.163 24.837 0 16 0Z" fill="${color}"/>
-            <circle cx="16" cy="15" r="10" fill="white"/>
-          </svg>
-          <div class="marker-pin-icon-inner">${emoji}</div>
-        </div>
-      `;
     }
 
     async function loadSeatingData() {
@@ -1037,7 +1070,7 @@
       const textSpan = document.getElementById(`like-text-${itemId}`);
       const btn = document.getElementById(`like-btn-${itemId}`);
 
-      let localDelta = parseInt(localStorage.getItem('liked_delta_' + item.id) || '0', 10);
+      let localDelta = parseInt(localStorage.getItem('liked_delta_' + itemId) || '0', 10);
 
       if (isCurrentlyLiked) {
         localStorage.removeItem(storageKey);
@@ -1067,6 +1100,7 @@
 
     function renderMarkers(seatingList) {
       markersGroup.clearLayers();
+      markerMap = {};
       const count = seatingList.length;
       document.getElementById('seating-count').innerText = `${count} seating location${count === 1 ? '' : 's'}`;
 
@@ -1087,16 +1121,17 @@
         }
 
         const customIcon = L.divIcon({
-          html: createPinHtml('#ea4335', '🪑'),
+          html: createPinHtml(COLOR_UNSELECTED, '🪑', false),
           className: 'custom-pin-div',
-          iconSize: [32, 42],
-          iconAnchor: [16, 42],
-          popupAnchor: [0, -40]
+          iconSize: [30, 40],
+          iconAnchor: [15, 40]
         });
 
         const marker = L.marker(pos, { icon: customIcon });
 
-        // On pin click: open side photo panel on LEFT, and position pin icon slightly to the RIGHT for a balanced view
+        markerMap[item.id] = { marker, item };
+
+        // On pin click: open side photo panel on LEFT, and set active marker color to RED
         marker.on('click', function(e) {
           L.DomEvent.stopPropagation(e);
           openSidePanel(item);
