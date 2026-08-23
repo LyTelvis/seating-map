@@ -113,23 +113,52 @@
       box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
     }
 
-    /* Owner Edit Mode Badge (Positioned floating at Top Right) */
-    .admin-indicator {
+    /* Top Right Mode Toggle Control Switch */
+    .mode-toggle-group {
       position: absolute;
       top: 16px;
       right: 20px;
       z-index: 1500;
-      font-size: 12px;
-      font-weight: 600;
-      background: #dcfce7;
-      color: #15803d;
-      padding: 6px 14px;
-      border-radius: 20px;
-      border: 1px solid #bbf7d0;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
       display: none;
       align-items: center;
-      gap: 6px;
+      background: rgba(255, 255, 255, 0.98);
+      backdrop-filter: blur(12px);
+      padding: 3px;
+      border-radius: 24px;
+      border: 1px solid #cbd5e1;
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.12);
+      gap: 3px;
+    }
+
+    .mode-toggle-btn {
+      background: transparent;
+      color: #475569;
+      border: none;
+      padding: 5px 12px;
+      border-radius: 18px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.2s ease;
+    }
+
+    .mode-toggle-btn:hover {
+      color: #0f172a;
+    }
+
+    .mode-toggle-btn.active-edit {
+      background: #dcfce7;
+      color: #15803d;
+      box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
+    }
+
+    .mode-toggle-btn.active-public {
+      background: #e0f2fe;
+      color: #0284c7;
+      box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
     }
 
     /* Location Search Control Bar (Top Center) */
@@ -687,9 +716,10 @@
     <button class="location-search-btn" onclick="searchLocation()">Search Map</button>
   </div>
 
-  <!-- Floating Owner Edit Mode Badge (Top Right) -->
-  <div class="admin-indicator" id="admin-tag">
-    ⚙️ Owner Edit Mode
+  <!-- Floating View Mode Toggle Switch (Top Right for Owner) -->
+  <div class="mode-toggle-group" id="mode-toggle-group">
+    <button class="mode-toggle-btn active-edit" id="btn-mode-edit" onclick="setMode('edit')">⚙️ Edit Mode</button>
+    <button class="mode-toggle-btn" id="btn-mode-public" onclick="setMode('public')">👁️ Public Preview</button>
   </div>
 
   <!-- Floating Pinning Instruction Bar -->
@@ -757,9 +787,40 @@
     const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     const isAdmin = isLocalhost || urlParams.get('admin') === 'true';
 
+    let currentMode = 'edit'; // 'edit' or 'public'
+
     if (isAdmin) {
-      const adminTag = document.getElementById('admin-tag');
-      if (adminTag) adminTag.style.display = 'flex';
+      const modeToggle = document.getElementById('mode-toggle-group');
+      if (modeToggle) modeToggle.style.display = 'flex';
+    }
+
+    function setMode(mode) {
+      currentMode = mode;
+      const btnEdit = document.getElementById('btn-mode-edit');
+      const btnPublic = document.getElementById('btn-mode-public');
+      const dupBanner = document.getElementById('duplicate-banner');
+      const unmapBanner = document.getElementById('unmapped-banner');
+
+      if (mode === 'edit') {
+        if (btnEdit) btnEdit.className = 'mode-toggle-btn active-edit';
+        if (btnPublic) btnPublic.className = 'mode-toggle-btn';
+        showToast('⚙️ Switched to Edit Mode');
+        if (isAdmin) {
+          checkPendingDuplicates();
+          checkPendingUnmapped();
+        }
+      } else {
+        if (btnEdit) btnEdit.className = 'mode-toggle-btn';
+        if (btnPublic) btnPublic.className = 'mode-toggle-btn active-public';
+        if (dupBanner) dupBanner.style.display = 'none';
+        if (unmapBanner) unmapBanner.style.display = 'none';
+        showToast('👁️ Switched to Public Preview');
+      }
+
+      // Re-render currently open side panel if active
+      if (activeSeatingItem) {
+        openSidePanel(activeSeatingItem);
+      }
     }
 
     // Helper to get local or relative API endpoint URL
@@ -921,7 +982,9 @@
       img.src = item.image_path || '';
       coords.innerText = `📍 ${item.latitude.toFixed(5)}, ${item.longitude.toFixed(5)}`;
 
-      if (isAdmin) {
+      const isEditActive = isAdmin && currentMode === 'edit';
+
+      if (isEditActive) {
         relocateContainer.innerHTML = `
           <button class="relocate-btn" id="btn-relocate-active">✏️ Edit / Relocate Pin</button>
         `;
@@ -939,7 +1002,7 @@
 
       const hasComment = item.comment && item.comment.trim() !== '';
 
-      if (isAdmin) {
+      if (isEditActive) {
         commentContainer.innerHTML = `
           <div class="side-panel-comment-section">
             <div class="side-panel-comment-label">Description / Comment:</div>
@@ -1043,13 +1106,14 @@
         console.warn('Error loading seating_data.json:', err);
       }
 
-      if (isAdmin) {
+      if (isAdmin && currentMode === 'edit') {
         checkPendingDuplicates();
         checkPendingUnmapped();
       }
     }
 
     async function checkPendingDuplicates() {
+      if (currentMode !== 'edit') return;
       try {
         const res = await fetch(getApiUrl('/api/pending_duplicates'));
         const result = await res.json();
@@ -1064,6 +1128,7 @@
     }
 
     function renderDuplicatesBanner(dupeList) {
+      if (currentMode !== 'edit') return;
       const banner = document.getElementById('duplicate-banner');
       const listContainer = document.getElementById('duplicate-list');
       document.getElementById('duplicate-count').innerText = dupeList.length;
@@ -1120,6 +1185,7 @@
     }
 
     async function checkPendingUnmapped() {
+      if (currentMode !== 'edit') return;
       try {
         const res = await fetch(getApiUrl('/api/pending_unmapped'));
         const result = await res.json();
@@ -1134,6 +1200,7 @@
     }
 
     function renderUnmappedDrawer(pendingList) {
+      if (currentMode !== 'edit') return;
       const banner = document.getElementById('unmapped-banner');
       const listContainer = document.getElementById('unmapped-list');
       document.getElementById('unmapped-count').innerText = pendingList.length;
