@@ -78,12 +78,22 @@
       border-radius: 12px;
     }
 
-    .view-toggle-btn {
+    /* Dual Button Group for Metro Vancouver & World */
+    .view-btn-group {
+      display: flex;
+      gap: 4px;
       background: #f1f5f9;
-      color: #0f172a;
+      padding: 3px;
+      border-radius: 20px;
       border: 1px solid #cbd5e1;
+    }
+
+    .view-btn {
+      background: transparent;
+      color: #475569;
+      border: none;
       padding: 4px 12px;
-      border-radius: 15px;
+      border-radius: 16px;
       font-size: 12px;
       font-weight: 600;
       cursor: pointer;
@@ -93,10 +103,14 @@
       transition: all 0.2s ease;
     }
 
-    .view-toggle-btn:hover {
-      background: #e2e8f0;
-      border-color: #94a3b8;
-      transform: scale(1.04);
+    .view-btn:hover {
+      color: #0f172a;
+    }
+
+    .view-btn.active {
+      background: #0284c7;
+      color: white;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
     }
 
     .admin-indicator {
@@ -574,7 +588,13 @@
       🪑 Public Seating Tracker
     </div>
     <span class="header-badge" id="seating-count">0 seating locations</span>
-    <button class="view-toggle-btn" id="view-toggle-btn" onclick="toggleMapView()">🌐 World</button>
+    
+    <!-- Both Metro Vancouver & World buttons side-by-side -->
+    <div class="view-btn-group">
+      <button class="view-btn active" id="btn-vancouver" onclick="setMetroVancouverView()">📍 Metro Vancouver</button>
+      <button class="view-btn" id="btn-world" onclick="setWorldView()">🌐 World</button>
+    </div>
+
     <span class="admin-indicator" id="admin-tag" style="display: none;">Owner Edit Mode</span>
   </div>
 
@@ -593,7 +613,6 @@
     const DEFAULT_VANCOUVER_CENTER = [49.2785, -123.1175];
     const DEFAULT_VANCOUVER_ZOOM = 12;
 
-    let isWorldView = false;
     let globalBounds = [];
     let metroVancouverBounds = [];
 
@@ -612,9 +631,10 @@
     let activePinningFilename = null;
 
     function setMetroVancouverView() {
-      isWorldView = false;
-      const btn = document.getElementById('view-toggle-btn');
-      if (btn) btn.innerHTML = '🌐 World';
+      const btnVan = document.getElementById('btn-vancouver');
+      const btnWorld = document.getElementById('btn-world');
+      if (btnVan) btnVan.classList.add('active');
+      if (btnWorld) btnWorld.classList.remove('active');
       
       if (metroVancouverBounds.length > 0) {
         map.fitBounds(metroVancouverBounds, { padding: [40, 40], maxZoom: 14 });
@@ -624,20 +644,13 @@
     }
 
     function setWorldView() {
-      isWorldView = true;
-      const btn = document.getElementById('view-toggle-btn');
-      if (btn) btn.innerHTML = '📍 Metro Vancouver';
+      const btnVan = document.getElementById('btn-vancouver');
+      const btnWorld = document.getElementById('btn-world');
+      if (btnWorld) btnWorld.classList.add('active');
+      if (btnVan) btnVan.classList.remove('active');
       
       if (globalBounds.length > 0) {
         map.fitBounds(globalBounds, { padding: [50, 50], maxZoom: 16 });
-      }
-    }
-
-    function toggleMapView() {
-      if (isWorldView) {
-        setMetroVancouverView();
-      } else {
-        setWorldView();
       }
     }
 
@@ -1016,12 +1029,8 @@
         markersGroup.addLayer(marker);
       });
 
-      // Default view is ALWAYS Metro Vancouver bounds
-      if (!isWorldView) {
-        setMetroVancouverView();
-      } else {
-        setWorldView();
-      }
+      // Default view is Metro Vancouver bounds
+      setMetroVancouverView();
     }
 
     async function saveComment(itemId) {
