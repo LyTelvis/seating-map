@@ -90,8 +90,8 @@ def convert_to_degrees(value):
         return None
     try:
         def to_float(x):
-            if isinstance(x, tuple) or hasattr(x, 'numerator'):
-                return float(x[0]) / float(x[1]) if isinstance(x, tuple) else float(x)
+            if isinstance(x, (tuple, list)):
+                return float(x[0]) / float(x[1])
             return float(x)
         
         d = to_float(value[0])
@@ -102,41 +102,60 @@ def convert_to_degrees(value):
         return None
 
 def extract_exif_data(filepath):
-    """Extracts GPS coordinates and timestamp from an image file."""
+    """Robustly extracts GPS coordinates and timestamp from an image file using Pillow."""
     if not HAS_PILLOW:
-        print("Pillow library not found. Please run: pip install Pillow")
+        print(f"⚠️ Pillow library not loaded! Cannot extract EXIF for {os.path.basename(filepath)}")
         return None, None, None
 
     try:
-        image = Image.open(filepath)
-        exif = image._getexif()
-        if not exif:
-            return None, None, None
+        img = Image.open(filepath)
+        timestamp = None
 
-        exif_data = {}
-        for tag, val in exif.items():
-            tag_name = ExifTags.TAGS.get(tag, tag)
-            exif_data[tag_name] = val
+        # Try to get timestamp
+        try:
+            exif = img._getexif()
+            if exif:
+                exif_tags = {ExifTags.TAGS.get(k, k): v for k, v in exif.items()}
+                raw_ts = exif_tags.get("DateTimeOriginal") or exif_tags.get("DateTime")
+                if raw_ts:
+                    timestamp = str(raw_ts).strip().replace(":", "-", 2)
+        except Exception:
+            pass
 
-        # Timestamp
-        timestamp = exif_data.get("DateTimeOriginal") or exif_data.get("DateTime")
-        if timestamp:
-            timestamp = str(timestamp).strip().replace(":", "-", 2)
+        # Robust GPS Extraction
+        gps_ifd = None
 
-        # GPS Info
-        gps_info = exif_data.get("GPSInfo")
-        if not gps_info:
+        # 1. Primary: Pillow 10+ getexif().get_ifd(0x8825)
+        try:
+            exif_obj = img.getexif()
+            if exif_obj:
+                gps_ifd = exif_obj.get_ifd(0x8825)
+        except Exception:
+            pass
+
+        # 2. Fallback: Legacy _getexif() tag 34853 (0x8825)
+        if not gps_ifd:
+            try:
+                exif = img._getexif()
+                if exif:
+                    gps_ifd = exif.get(34853)
+            except Exception:
+                pass
+
+        if not gps_ifd:
             return None, None, timestamp
 
-        gps_data = {}
-        for t in gps_info:
-            sub_tag = ExifTags.GPSTAGS.get(t, t)
-            gps_data[sub_tag] = gps_info[t]
+        # Combine integer keys (1, 2, 3, 4) and string tag names ('GPSLatitude', etc.)
+        gps_dict = {}
+        for k, v in gps_ifd.items():
+            name = ExifTags.GPSTAGS.get(k, k)
+            gps_dict[k] = v
+            gps_dict[name] = v
 
-        lat_raw = gps_data.get("GPSLatitude")
-        lat_ref = gps_data.get("GPSLatitudeRef")
-        lng_raw = gps_data.get("GPSLongitude")
-        lng_ref = gps_data.get("GPSLongitudeRef")
+        lat_raw = gps_dict.get('GPSLatitude') or gps_dict.get(2)
+        lat_ref = gps_dict.get('GPSLatitudeRef') or gps_dict.get(1)
+        lng_raw = gps_dict.get('GPSLongitude') or gps_dict.get(4)
+        lng_ref = gps_dict.get('GPSLongitudeRef') or gps_dict.get(3)
 
         if not lat_raw or not lng_raw:
             return None, None, timestamp
@@ -144,9 +163,9 @@ def extract_exif_data(filepath):
         lat = convert_to_degrees(lat_raw)
         lng = convert_to_degrees(lng_raw)
 
-        if lat is not None and lat_ref in ["S", "s"]:
+        if lat is not None and str(lat_ref).upper() == 'S':
             lat = -lat
-        if lng is not None and lng_ref in ["W", "w"]:
+        if lng is not None and str(lng_ref).upper() == 'W':
             lng = -lng
 
         return lat, lng, timestamp
@@ -342,7 +361,7 @@ class SeatingMapHTTPHandler(http.server.SimpleHTTPRequestHandler):
             try:
                 payload = json.loads(post_data.decode("utf-8"))
                 filename = payload.get("filename")
-                action = payload.get("action") # "add_anyway" or "skip"
+                action = payload.get("action")
 
                 src_path = os.path.join(INBOX_DIR, filename)
                 data = load_data()
@@ -363,7 +382,6 @@ class SeatingMapHTTPHandler(http.server.SimpleHTTPRequestHandler):
                     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     item_id = f"seating_{int(datetime.now().timestamp())}_{len(data)}"
 
-                    # If lat/lng missing, use existing match coords if available
                     if lat is None or lng is None:
                         existing_match = payload.get("existing_match", {})
                         lat = existing_match.get("latitude", 0.0)
@@ -376,7 +394,7 @@ class SeatingMapHTTPHandler(http.server.SimpleHTTPRequestHandler):
                         "latitude": round(lat, 6) if lat is not None else 0.0,
                         "longitude": round(lng, 6) if lng is not None else 0.0,
                         "timestamp": timestamp or now_str,
-                        "comment": "Duplicate entry added manually"
+                        "comment": ""
                     })
                     save_data(data)
                     sync_to_github()
