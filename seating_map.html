@@ -52,6 +52,8 @@
       display: flex;
       align-items: center;
       gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
     }
 
     .header-title {
@@ -72,6 +74,27 @@
       border-radius: 12px;
     }
 
+    .view-toggle-btn {
+      background: #f1f5f9;
+      color: #0f172a;
+      border: 1px solid #cbd5e1;
+      padding: 4px 12px;
+      border-radius: 15px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.2s ease;
+    }
+
+    .view-toggle-btn:hover {
+      background: #e2e8f0;
+      border-color: #94a3b8;
+      transform: scale(1.03);
+    }
+
     .admin-indicator {
       font-size: 11px;
       font-weight: 600;
@@ -84,7 +107,7 @@
     /* Banners Container */
     .banner-container {
       position: absolute;
-      top: 70px;
+      top: 75px;
       left: 50%;
       transform: translateX(-50%);
       z-index: 1000;
@@ -520,6 +543,7 @@
       🪑 Public Seating Tracker
     </div>
     <span class="header-badge" id="seating-count">0 seating locations</span>
+    <button class="view-toggle-btn" id="view-toggle-btn" onclick="toggleMapView()">🌍 World View</button>
     <span class="admin-indicator" id="admin-tag" style="display: none;">Owner Edit Mode</span>
   </div>
 
@@ -560,10 +584,17 @@
       document.getElementById('admin-tag').style.display = 'inline';
     }
 
-    // Initialize Map with standard OpenStreetMap tiles (standard map graphic preset)
+    // Greater Vancouver Region Coordinates
+    const VANCOUVER_CENTER = [49.2785, -123.1175];
+    const VANCOUVER_ZOOM = 12;
+
+    let isWorldView = false;
+    let globalBounds = [];
+
+    // Initialize Map default zoomed to Greater Vancouver Region
     const map = L.map('map', {
       zoomControl: true
-    }).setView([49.2827, -123.1207], 13);
+    }).setView(VANCOUVER_CENTER, VANCOUVER_ZOOM);
 
     // Standard OpenStreetMap Tile Layer
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -574,6 +605,30 @@
     let markersGroup = L.featureGroup().addTo(map);
     let tempMarker = null;
     let activePinningFilename = null;
+
+    function setVancouverView() {
+      isWorldView = false;
+      const btn = document.getElementById('view-toggle-btn');
+      if (btn) btn.innerHTML = '🌍 World View';
+      map.setView(VANCOUVER_CENTER, VANCOUVER_ZOOM);
+    }
+
+    function setWorldView() {
+      isWorldView = true;
+      const btn = document.getElementById('view-toggle-btn');
+      if (btn) btn.innerHTML = '📍 Vancouver View';
+      if (globalBounds.length > 0) {
+        map.fitBounds(globalBounds, { padding: [50, 50], maxZoom: 16 });
+      }
+    }
+
+    function toggleMapView() {
+      if (isWorldView) {
+        setVancouverView();
+      } else {
+        setWorldView();
+      }
+    }
 
     function showToast(message) {
       const toast = document.getElementById('toast');
@@ -835,7 +890,6 @@
       let localDelta = parseInt(localStorage.getItem('liked_delta_' + itemId) || '0', 10);
 
       if (isCurrentlyLiked) {
-        // Unlike
         localStorage.removeItem(storageKey);
         localDelta -= 1;
         localStorage.setItem('liked_delta_' + itemId, localDelta.toString());
@@ -843,7 +897,6 @@
         if (textSpan) textSpan.innerText = 'Like';
         if (countSpan) countSpan.innerText = Math.max(0, baseLikes + localDelta);
       } else {
-        // Like
         localStorage.setItem(storageKey, 'true');
         localDelta += 1;
         localStorage.setItem('liked_delta_' + itemId, localDelta.toString());
@@ -853,7 +906,6 @@
         showToast('❤️ You liked this seating location!');
       }
 
-      // If running on localhost server, send API request to persist in database
       if (isLocalhost && !isCurrentlyLiked) {
         fetch('/api/like', {
           method: 'POST',
@@ -870,13 +922,13 @@
 
       if (count === 0) return;
 
-      const bounds = [];
+      globalBounds = [];
 
       seatingList.forEach(item => {
         if (!item.latitude || !item.longitude) return;
 
         const pos = [item.latitude, item.longitude];
-        bounds.push(pos);
+        globalBounds.push(pos);
 
         const customIcon = L.divIcon({
           html: createPinHtml('#ea4335', '🪑'),
@@ -905,9 +957,6 @@
             </div>
         `;
 
-        // Description / Comment Section logic:
-        // Admin Mode: Always show textarea to edit/save notes.
-        // Public View Mode: Show ONLY if comment is non-empty!
         if (isAdmin) {
           popupContent += `
             <div class="popup-comment-section">
@@ -925,7 +974,6 @@
           `;
         }
 
-        // Like Button Bar
         popupContent += `
             <div class="popup-like-bar">
               <button id="like-btn-${item.id}" class="like-btn ${isLiked ? 'liked' : ''}" onclick="toggleLike('${item.id}', ${baseLikes})">
@@ -943,8 +991,11 @@
         markersGroup.addLayer(marker);
       });
 
-      if (bounds.length > 0) {
-        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
+      // Default view is ALWAYS zoomed to Greater Vancouver Region
+      if (!isWorldView) {
+        setVancouverView();
+      } else {
+        setWorldView();
       }
     }
 
