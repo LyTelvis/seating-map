@@ -137,11 +137,11 @@
       pointer-events: none;
     }
 
-    /* Side Photo Display Panel Drawer (Shifted to left: 65px so + / - zoom buttons remain 100% visible) */
+    /* Side Photo Display Panel Drawer (Positioned left: 65px clear of zoom + / - buttons) */
     .side-photo-panel {
       position: absolute;
       top: 20px;
-      left: 65px; /* Clear space for Leaflet + / - zoom buttons */
+      left: 65px;
       width: 350px;
       max-height: calc(100% - 100px);
       background: rgba(255, 255, 255, 0.98);
@@ -491,7 +491,7 @@
       width: 30px;
       height: 40px;
       cursor: pointer;
-      filter: drop-shadow(0px 3px 5px rgba(0, 0, 0, 0.25));
+      filter: drop-shadow(0px 2px 5px rgba(0, 0, 0, 0.2));
       transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
 
@@ -677,8 +677,8 @@
     let metroVancouverBounds = [];
     let activeSeatingItem = null;
 
-    // Pin Color Palettes: Unselected = Light Slate Gray (#94a3b8), Selected = Vibrant Red (#ea4335)
-    const COLOR_UNSELECTED = '#94a3b8';
+    // Pin Color Palettes: Unselected = White (#ffffff), Selected = Vibrant Red (#ea4335)
+    const COLOR_UNSELECTED = '#ffffff';
     const COLOR_SELECTED = '#ea4335';
 
     let markerMap = {}; // Map item.id -> { marker, item }
@@ -698,11 +698,13 @@
     let activePinningFilename = null;
 
     function createPinHtml(color = COLOR_UNSELECTED, emoji = '🪑', isActive = false) {
+      const strokeAttr = isActive ? 'stroke="none"' : 'stroke="#cbd5e1" stroke-width="1.5"';
+      const circleFill = isActive ? 'white' : '#f1f5f9';
       return `
         <div class="marker-pin-wrapper ${isActive ? 'active-pin' : ''}">
           <svg class="marker-pin-svg" viewBox="0 0 32 42" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M16 0C7.163 0 0 7.163 0 16C0 27.2 16 42 16 42C16 42 32 27.2 32 16C32 7.163 24.837 0 16 0Z" fill="${color}"/>
-            <circle cx="16" cy="15" r="10" fill="white"/>
+            <path d="M16 0C7.163 0 0 7.163 0 16C0 27.2 16 42 16 42C16 42 32 27.2 32 16C32 7.163 24.837 0 16 0Z" fill="${color}" ${strokeAttr}/>
+            <circle cx="16" cy="15" r="9" fill="${circleFill}"/>
           </svg>
           <div class="marker-pin-icon-inner">${emoji}</div>
         </div>
@@ -814,7 +816,7 @@
       const panel = document.getElementById('side-photo-panel');
       if (panel) panel.classList.remove('active');
       activeSeatingItem = null;
-      updateMarkerColors(null); // Reset all pins back to light color
+      updateMarkerColors(null); // Reset all pins back to white
     }
 
     // Close side panel when clicking empty area on map
