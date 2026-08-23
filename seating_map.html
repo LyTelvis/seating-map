@@ -73,7 +73,7 @@
       font-weight: 600;
       background: #e0f2fe;
       color: #0284c7;
-      padding: 3px 9px;
+      padding: 3px 99px;
       border-radius: 12px;
     }
 
@@ -1003,6 +1003,11 @@
 
         const marker = L.marker(pos, { icon: customIcon })
           .bindPopup(popupContent, { maxWidth: 280 });
+
+        // When user clicks pin icon, smoothly zoom in closer (zoom level 17) centered on marker
+        marker.on('click', function() {
+          map.setView(pos, 17, { animate: true });
+        });
 
         markersGroup.addLayer(marker);
       });
