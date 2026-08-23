@@ -1002,7 +1002,11 @@
 
     // Initialize Map with CartoDB Positron (Light Minimalist) permanently
     const map = L.map('map', {
-      zoomControl: true
+      zoomControl: true,
+      doubleClickZoom: true,
+      touchZoom: true,
+      zoomSnap: 0.1,
+      zoomDelta: 0.5
     }).setView(DEFAULT_VANCOUVER_CENTER, DEFAULT_VANCOUVER_ZOOM);
 
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
@@ -1836,16 +1840,18 @@
       showToast('✅ Comment saved!');
     }
 
-    // Google Maps-style Mobile Touch Gestures: Double-Tap to Zoom In, Double-Tap & Drag Up/Down to Zoom In/Out
+    // Google Maps-style Mobile Touch Gestures: Smooth Double-Tap Zoom & One-Finger Drag Zoom
     (function initMobileGoogleMapsGestures() {
       const mapEl = document.getElementById('map');
       if (!mapEl) return;
 
       let lastTapTime = 0;
       let lastTapPos = null;
-      let isDoubleTapDrag = false;
+      let isDoubleTapCandidate = false;
+      let hasDragged = false;
       let dragStartPosY = 0;
       let startZoom = 12;
+      let tapCenterLatLng = null;
 
       mapEl.addEventListener('touchstart', function(e) {
         if (e.touches.length !== 1) return;
@@ -1858,15 +1864,15 @@
         const timeDiff = now - lastTapTime;
         const dist = lastTapPos ? Math.hypot(touchX - lastTapPos.x, touchY - lastTapPos.y) : 999;
 
-        if (timeDiff > 40 && timeDiff < 340 && dist < 40) {
-          // Double-tap drag gesture initiated!
-          isDoubleTapDrag = true;
+        if (timeDiff > 40 && timeDiff < 360 && dist < 45) {
+          // Double-tap detected!
+          isDoubleTapCandidate = true;
+          hasDragged = false;
           dragStartPosY = touchY;
           startZoom = map.getZoom();
 
-          if (map.dragging && map.dragging.enabled()) {
-            map.dragging.disable();
-          }
+          const containerPoint = L.point(touchX, touchY);
+          tapCenterLatLng = map.containerPointToLatLng(containerPoint);
         } else {
           lastTapTime = now;
           lastTapPos = { x: touchX, y: touchY };
@@ -1874,21 +1880,47 @@
       }, { passive: true });
 
       mapEl.addEventListener('touchmove', function(e) {
-        if (!isDoubleTapDrag || e.touches.length !== 1) return;
+        if (!isDoubleTapCandidate || e.touches.length !== 1) return;
 
         const touchY = e.touches[0].clientY;
-        const deltaY = dragStartPosY - touchY; // Moving UP = zoom IN, Moving DOWN = zoom OUT
+        const deltaY = dragStartPosY - touchY; // Drag UP = zoom IN, Drag DOWN = zoom OUT
 
-        const zoomChange = deltaY / 75.0;
-        const targetZoom = Math.min(Math.max(startZoom + zoomChange, 2), 19);
+        if (Math.abs(deltaY) > 4) {
+          if (!hasDragged) {
+            hasDragged = true;
+            if (map.dragging && map.dragging.enabled()) {
+              map.dragging.disable();
+            }
+          }
 
-        map.setZoom(targetZoom, { animate: false });
-        if (e.cancelable) e.preventDefault();
+          // Smooth continuous zoom formula
+          const zoomChange = deltaY / 110.0;
+          const targetZoom = Math.min(Math.max(startZoom + zoomChange, 2), 19);
+
+          if (tapCenterLatLng) {
+            map.setView(tapCenterLatLng, targetZoom, { animate: false });
+          } else {
+            map.setZoom(targetZoom, { animate: false });
+          }
+
+          if (e.cancelable) e.preventDefault();
+        }
       }, { passive: false });
 
       function resetGesture() {
-        if (isDoubleTapDrag) {
-          isDoubleTapDrag = false;
+        if (isDoubleTapCandidate) {
+          if (!hasDragged) {
+            // Quick double tap without drag -> Smooth double tap zoom in centered at tap point!
+            if (tapCenterLatLng) {
+              map.setView(tapCenterLatLng, Math.min(map.getZoom() + 1, 19), { animate: true, duration: 0.3 });
+            } else {
+              map.zoomIn();
+            }
+          }
+
+          isDoubleTapCandidate = false;
+          hasDragged = false;
+
           if (map.dragging && !map.dragging.enabled()) {
             map.dragging.enable();
           }
