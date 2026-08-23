@@ -23,7 +23,7 @@ except ImportError:
 WORKSPACE_DIR = os.path.dirname(os.path.abspath(__file__))
 INBOX_DIR = os.path.join(WORKSPACE_DIR, "01_Inbox")
 MAPPED_DIR = os.path.join(WORKSPACE_DIR, "02_Mapped")
-NEEDS_GPS_DIR = os.path.join(WORKSPACE_DIR, "03_Needs_GPS")
+UNMAPPED_DIR = os.path.join(WORKSPACE_DIR, "03_Unmapped")
 DATA_FILE = os.path.join(WORKSPACE_DIR, "seating_data.json")
 CSV_FILE = os.path.join(WORKSPACE_DIR, "seating_map.csv")
 MAP_HTML_FILE = os.path.join(WORKSPACE_DIR, "seating_map.html")
@@ -31,7 +31,7 @@ MAP_HTML_FILE = os.path.join(WORKSPACE_DIR, "seating_map.html")
 PORT = 8000
 
 def ensure_directories():
-    for d in [INBOX_DIR, MAPPED_DIR, NEEDS_GPS_DIR]:
+    for d in [INBOX_DIR, MAPPED_DIR, UNMAPPED_DIR]:
         os.makedirs(d, exist_ok=True)
 
 def load_data():
@@ -155,6 +155,29 @@ def extract_exif_data(filepath):
         print(f"Error reading EXIF from {os.path.basename(filepath)}: {e}")
         return None, None, None
 
+def get_pending_unmapped():
+    """Returns list of photos currently in 01_Inbox that lack GPS metadata."""
+    ensure_directories()
+    valid_extensions = {".jpg", ".jpeg", ".png", ".heic"}
+    inbox_files = [
+        f for f in os.listdir(INBOX_DIR)
+        if os.path.isfile(os.path.join(INBOX_DIR, f)) and os.path.splitext(f)[1].lower() in valid_extensions and not f.startswith(".")
+    ]
+
+    pending = []
+    for filename in inbox_files:
+        src_path = os.path.join(INBOX_DIR, filename)
+        lat, lng, timestamp = extract_exif_data(src_path)
+        if lat is None or lng is None:
+            now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            pending.append({
+                "filename": filename,
+                "image_path": f"01_Inbox/{filename}",
+                "timestamp": timestamp or now_str
+            })
+
+    return pending
+
 def process_inbox():
     ensure_directories()
     data = load_data()
@@ -162,7 +185,7 @@ def process_inbox():
     valid_extensions = {".jpg", ".jpeg", ".png", ".heic"}
     inbox_files = [
         f for f in os.listdir(INBOX_DIR)
-        if os.path.isfile(os.path.join(INBOX_DIR, f)) and os.path.splitext(f)[1].lower() in valid_extensions
+        if os.path.isfile(os.path.join(INBOX_DIR, f)) and os.path.splitext(f)[1].lower() in valid_extensions and not f.startswith(".")
     ]
 
     if not inbox_files:
@@ -171,7 +194,7 @@ def process_inbox():
 
     print(f"\n🔍 Found {len(inbox_files)} photo(s) in 01_Inbox. Processing...\n")
     processed_count = 0
-    missing_gps_count = 0
+    pending_manual_count = 0
 
     for filename in inbox_files:
         src_path = os.path.join(INBOX_DIR, filename)
@@ -203,20 +226,18 @@ def process_inbox():
                 "comment": ""
             })
             processed_count += 1
-            print(f"  🟢 [PASSED] '{filename}' -> Mapped at ({lat:.5f}, {lng:.5f})")
+            print(f"  🟢 [AUTO MAPPED] '{filename}' -> Mapped at ({lat:.5f}, {lng:.5f})")
         else:
-            dest_path = os.path.join(NEEDS_GPS_DIR, filename)
-            shutil.move(src_path, dest_path)
-            missing_gps_count += 1
-            print(f"  🔴 [NO GPS ] '{filename}' -> Missing location data! Moved to 03_Needs_GPS.")
+            pending_manual_count += 1
+            print(f"  ⚠️ [NO GPS EXIF ] '{filename}' -> Kept in 01_Inbox for manual pin drop on map!")
 
     save_data(data)
 
     print("\n--------------------------------------------------")
-    print(f"✅ Processing Complete:")
-    print(f"   • {processed_count} photo(s) added to the map (in 02_Mapped)")
-    if missing_gps_count > 0:
-        print(f"   • ⚠️ {missing_gps_count} photo(s) MISSING GEOLOCATION (moved to 03_Needs_GPS)")
+    print(f"✅ Auto-Processing Complete:")
+    print(f"   • {processed_count} photo(s) auto-mapped with EXIF GPS")
+    if pending_manual_count > 0:
+        print(f"   • ⚠️ {pending_manual_count} photo(s) pending MANUAL PIN DROP on map!")
     print("--------------------------------------------------\n")
 
     if processed_count > 0:
@@ -228,10 +249,96 @@ class SeatingMapHTTPHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=WORKSPACE_DIR, **kwargs)
 
+    def do_GET(self):
+        if self.path == "/api/pending_unmapped":
+            pending = get_pending_unmapped()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"success": True, "pending": pending}).encode("utf-8"))
+        else:
+            super().do_GET()
+
     def do_POST(self):
-        if self.path == "/api/save_comment":
-            content_length = int(self.headers.get("Content-Length", 0))
-            post_data = self.rfile.read(content_length)
+        content_length = int(self.headers.get("Content-Length", 0))
+        post_data = self.rfile.read(content_length)
+
+        if self.path == "/api/manual_pin":
+            try:
+                payload = json.loads(post_data.decode("utf-8"))
+                filename = payload.get("filename")
+                lat = float(payload.get("latitude"))
+                lng = float(payload.get("longitude"))
+                comment = payload.get("comment", "").strip()
+
+                src_path = os.path.join(INBOX_DIR, filename)
+                if not os.path.exists(src_path):
+                    # Check if file exists elsewhere
+                    self.send_response(404)
+                    self.send_header("Content-Type", "application/json")
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"success": False, "error": f"File {filename} not found in Inbox"}).encode("utf-8"))
+                    return
+
+                dest_filename = filename
+                counter = 1
+                name_part, ext_part = os.path.splitext(filename)
+                while os.path.exists(os.path.join(MAPPED_DIR, dest_filename)):
+                    dest_filename = f"{name_part}_{counter}{ext_part}"
+                    counter += 1
+
+                dest_path = os.path.join(MAPPED_DIR, dest_filename)
+                shutil.move(src_path, dest_path)
+
+                data = load_data()
+                rel_path = f"02_Mapped/{dest_filename}"
+                now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+                item_id = f"seating_{int(datetime.now().timestamp())}_{len(data)}"
+                data.append({
+                    "id": item_id,
+                    "filename": dest_filename,
+                    "image_path": rel_path,
+                    "latitude": round(lat, 6),
+                    "longitude": round(lng, 6),
+                    "timestamp": now_str,
+                    "comment": comment
+                })
+
+                save_data(data)
+                sync_to_github()
+
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": True, "data": data, "pending": get_pending_unmapped()}).encode("utf-8"))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": False, "error": str(e)}).encode("utf-8"))
+
+        elif self.path == "/api/skip_unmapped":
+            try:
+                payload = json.loads(post_data.decode("utf-8"))
+                filename = payload.get("filename")
+
+                src_path = os.path.join(INBOX_DIR, filename)
+                if os.path.exists(src_path):
+                    dest_path = os.path.join(UNMAPPED_DIR, filename)
+                    shutil.move(src_path, dest_path)
+
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": True, "pending": get_pending_unmapped()}).encode("utf-8"))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": False, "error": str(e)}).encode("utf-8"))
+
+        elif self.path == "/api/save_comment":
             try:
                 payload = json.loads(post_data.decode("utf-8"))
                 item_id = payload.get("id")
