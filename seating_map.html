@@ -294,34 +294,36 @@
       cursor: pointer;
     }
 
-    /* Semi-transparent Overlay Navigation Arrows on Photo */
+    /* Highly Transparent Overlay Navigation Arrows on Photo */
     .nav-arrow-btn {
       position: absolute;
       top: 50%;
       transform: translateY(-50%);
       z-index: 12;
-      background: rgba(15, 23, 42, 0.55);
-      color: white;
-      border: 1px solid rgba(255, 255, 255, 0.4);
-      width: 38px;
-      height: 38px;
+      background: rgba(15, 23, 42, 0.28);
+      color: rgba(255, 255, 255, 0.95);
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      width: 36px;
+      height: 36px;
       border-radius: 50%;
-      font-size: 20px;
+      font-size: 18px;
       font-weight: 700;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      backdrop-filter: blur(4px);
+      backdrop-filter: blur(5px);
       transition: all 0.2s ease;
       user-select: none;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      opacity: 0.75;
     }
 
     .nav-arrow-btn:hover {
-      background: rgba(15, 23, 42, 0.85);
-      border-color: rgba(255, 255, 255, 0.8);
+      background: rgba(15, 23, 42, 0.75);
+      border-color: rgba(255, 255, 255, 0.85);
       transform: translateY(-50%) scale(1.1);
+      opacity: 1;
     }
 
     .nav-arrow-left {
@@ -789,9 +791,9 @@
   <div class="side-photo-panel" id="side-photo-panel">
     <button class="side-panel-close-btn" onclick="closeSidePanel()">✕</button>
     <div class="side-panel-img-container">
-      <button class="nav-arrow-btn nav-arrow-left" id="btn-nav-left" title="Previous photo to the left (West)">⟨</button>
+      <button class="nav-arrow-btn nav-arrow-left" id="btn-nav-left" title="Closest photo to the left (West)">⟨</button>
       <img id="side-panel-img" src="" alt="Seating Photo" onclick="window.open(this.src, '_blank')" />
-      <button class="nav-arrow-btn nav-arrow-right" id="btn-nav-right" title="Next photo to the right (East)">⟩</button>
+      <button class="nav-arrow-btn nav-arrow-right" id="btn-nav-right" title="Closest photo to the right (East)">⟩</button>
     </div>
     <div class="side-panel-body">
       <div class="side-panel-meta">
@@ -915,7 +917,7 @@
       `;
     }
 
-    // Helper to get adjacent items spatially sorted from West (Left) to East (Right)
+    // Helper to find the geographically closest adjacent photos considering both latitude and longitude
     function getAdjacentPhotos(currentItem) {
       if (!currentItem) return { prev: null, next: null };
 
@@ -927,20 +929,45 @@
           uniqueItemsMap[item.id || item.filename] = item;
         }
       });
-      const allItems = Object.values(uniqueItemsMap);
-
-      if (allItems.length <= 1) return { prev: null, next: null };
-
-      // Sort items spatially by longitude ascending (West to East)
-      allItems.sort((a, b) => a.longitude - b.longitude);
 
       const curId = currentItem.id || currentItem.filename;
-      const idx = allItems.findIndex(i => (i.id || i.filename) === curId);
+      const curLat = currentItem.latitude;
+      const curLng = currentItem.longitude;
 
-      if (idx === -1) return { prev: null, next: null };
+      const others = Object.values(uniqueItemsMap).filter(i => (i.id || i.filename) !== curId);
 
-      const prevItem = allItems[(idx - 1 + allItems.length) % allItems.length];
-      const nextItem = allItems[(idx + 1) % allItems.length];
+      if (others.length === 0) return { prev: null, next: null };
+
+      // Calculate squared distance in 2D lat/lng space
+      function getDistSq(target) {
+        const dLat = target.latitude - curLat;
+        const dLng = target.longitude - curLng;
+        return dLat * dLat + dLng * dLng;
+      }
+
+      // 1. Right Candidates: Eastward (longitude > curLng)
+      const eastCandidates = others.filter(i => i.longitude > curLng + 0.000001);
+      let nextItem = null;
+      if (eastCandidates.length > 0) {
+        eastCandidates.sort((a, b) => getDistSq(a) - getDistSq(b));
+        nextItem = eastCandidates[0];
+      } else {
+        // Fallback / Wrap-around to westernmost photo
+        others.sort((a, b) => a.longitude - b.longitude);
+        nextItem = others[0];
+      }
+
+      // 2. Left Candidates: Westward (longitude < curLng)
+      const westCandidates = others.filter(i => i.longitude < curLng - 0.000001);
+      let prevItem = null;
+      if (westCandidates.length > 0) {
+        westCandidates.sort((a, b) => getDistSq(a) - getDistSq(b));
+        prevItem = westCandidates[0];
+      } else {
+        // Fallback / Wrap-around to easternmost photo
+        others.sort((a, b) => b.longitude - a.longitude);
+        prevItem = others[0];
+      }
 
       return { prev: prevItem, next: nextItem };
     }
@@ -1057,7 +1084,7 @@
       img.src = item.image_path || '';
       coords.innerText = `📍 ${item.latitude.toFixed(5)}, ${item.longitude.toFixed(5)}`;
 
-      // Configure adjacent left/right transparent overlay buttons
+      // Configure adjacent left/right transparent overlay buttons (evaluating 2D distance in lat & lng)
       const { prev, next } = getAdjacentPhotos(item);
       const btnLeft = document.getElementById('btn-nav-left');
       const btnRight = document.getElementById('btn-nav-right');
