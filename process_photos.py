@@ -22,17 +22,51 @@ except ImportError:
 
 WORKSPACE_DIR = os.path.dirname(os.path.abspath(__file__))
 INBOX_DIR = os.path.join(WORKSPACE_DIR, "01_Inbox")
-MAPPED_DIR = os.path.join(WORKSPACE_DIR, "02_Mapped")
-UNMAPPED_DIR = os.path.join(WORKSPACE_DIR, "03_Unmapped")
-DATA_FILE = os.path.join(WORKSPACE_DIR, "seating_data.json")
-CSV_FILE = os.path.join(WORKSPACE_DIR, "seating_map.csv")
-MAP_HTML_FILE = os.path.join(WORKSPACE_DIR, "seating_map.html")
-
-PORT = 8000
+THUMBS_DIR = os.path.join(MAPPED_DIR, "thumbs")
 
 def ensure_directories():
-    for d in [INBOX_DIR, MAPPED_DIR, UNMAPPED_DIR]:
+    for d in [INBOX_DIR, MAPPED_DIR, UNMAPPED_DIR, THUMBS_DIR]:
         os.makedirs(d, exist_ok=True)
+
+def create_thumbnail(src_path, dest_filename):
+    """Creates a fast, small 120x120 thumbnail for map pin icons."""
+    ensure_directories()
+    name_part, ext_part = os.path.splitext(dest_filename)
+    thumb_name = f"thumb_{name_part}.jpg"
+    thumb_path = os.path.join(THUMBS_DIR, thumb_name)
+    thumb_rel = f"02_Mapped/thumbs/{thumb_name}"
+
+    if os.path.exists(thumb_path):
+        return thumb_rel
+
+    try:
+        if HAS_PILLOW:
+            with Image.open(src_path) as img:
+                try:
+                    from PIL import ImageOps
+                    img = ImageOps.exif_transpose(img)
+                except Exception:
+                    pass
+                w, h = img.size
+                crop_w = int(w * 0.6)
+                crop_h = int(h * 0.6)
+                left = (w - crop_w) // 2
+                top = (h - crop_h) // 2
+                cropped = img.crop((left, top, left + crop_w, top + crop_h))
+                cropped.thumbnail((120, 120), Image.Resampling.LANCZOS)
+                cropped.convert("RGB").save(thumb_path, "JPEG", quality=82, optimize=True)
+                return thumb_rel
+    except Exception:
+        pass
+
+    try:
+        res = subprocess.run(["sips", "-z", "120", "120", src_path, "--out", thumb_path], capture_output=True)
+        if res.returncode == 0 and os.path.exists(thumb_path):
+            return thumb_rel
+    except Exception:
+        pass
+
+    return f"02_Mapped/{dest_filename}"
 
 def load_data():
     if os.path.exists(DATA_FILE):
@@ -304,6 +338,7 @@ def process_inbox():
             shutil.move(src_path, dest_path)
 
             rel_path = f"02_Mapped/{dest_filename}"
+            thumb_path = create_thumbnail(dest_path, dest_filename)
             now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
             item_id = f"seating_{int(datetime.now().timestamp())}_{processed_count}"
@@ -311,6 +346,7 @@ def process_inbox():
                 "id": item_id,
                 "filename": dest_filename,
                 "image_path": rel_path,
+                "thumb_path": thumb_path,
                 "latitude": round(lat, 6),
                 "longitude": round(lng, 6),
                 "timestamp": timestamp or now_str,
@@ -491,6 +527,7 @@ class SeatingMapHTTPHandler(http.server.SimpleHTTPRequestHandler):
 
                 data = load_data()
                 rel_path = f"02_Mapped/{dest_filename}"
+                thumb_path = create_thumbnail(dest_path, dest_filename)
                 now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
                 item_id = f"seating_{int(datetime.now().timestamp())}_{len(data)}"
@@ -498,6 +535,7 @@ class SeatingMapHTTPHandler(http.server.SimpleHTTPRequestHandler):
                     "id": item_id,
                     "filename": dest_filename,
                     "image_path": rel_path,
+                    "thumb_path": thumb_path,
                     "latitude": round(lat, 6),
                     "longitude": round(lng, 6),
                     "timestamp": now_str,

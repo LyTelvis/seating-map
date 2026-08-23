@@ -1186,7 +1186,7 @@
           (entry.item && (entry.item.id === selectedId || entry.item.filename === selectedId))
         );
         const color = isSelected ? COLOR_SELECTED : COLOR_UNSELECTED;
-        const imgPath = entry.item ? entry.item.image_path : null;
+        const imgPath = entry.item ? (entry.item.thumb_path || entry.item.image_path) : null;
         const iconHtml = createPinHtml(color, imgPath, isSelected);
 
         const newIcon = L.divIcon({
@@ -1763,7 +1763,7 @@
         }
 
         const customIcon = L.divIcon({
-          html: createPinHtml(COLOR_UNSELECTED, item.image_path, false),
+          html: createPinHtml(COLOR_UNSELECTED, item.thumb_path || item.image_path, false),
           className: 'custom-pin-div',
           iconSize: [32, 42],
           iconAnchor: [16, 42]
