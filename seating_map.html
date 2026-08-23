@@ -137,11 +137,11 @@
       pointer-events: none;
     }
 
-    /* Side Photo Display Panel Drawer */
+    /* Side Photo Display Panel Drawer (Positioned on the LEFT) */
     .side-photo-panel {
       position: absolute;
       top: 20px;
-      right: 20px;
+      left: 20px;
       width: 360px;
       max-height: calc(100% - 100px);
       background: rgba(255, 255, 255, 0.98);
@@ -154,7 +154,7 @@
       flex-direction: column;
       overflow: hidden;
       transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
-      transform: translateX(400px);
+      transform: translateX(-400px);
       opacity: 0;
       pointer-events: none;
     }
@@ -618,7 +618,7 @@
     </div>
   </div>
 
-  <!-- Side Photo Display Panel Drawer (Unobscured Pin Icon + Larger Image) -->
+  <!-- Side Photo Display Panel Drawer (Positioned on the LEFT) -->
   <div class="side-photo-panel" id="side-photo-panel">
     <button class="side-panel-close-btn" onclick="closeSidePanel()">✕</button>
     <div class="side-panel-img-container">
@@ -760,8 +760,10 @@
 
       panel.classList.add('active');
 
-      // Zoom in close & offset map center slightly left so pin is unobscured by side panel
-      map.setView([item.latitude, item.longitude], 17, { animate: true });
+      // Reduced zoom-in level (15 instead of 17)
+      // Offset longitude west (-0.0065) so clicked pin icon positions nicely on the RIGHT for a balanced view
+      const balancedCenter = [item.latitude, item.longitude - 0.0065];
+      map.setView(balancedCenter, 15, { animate: true });
     }
 
     function closeSidePanel() {
@@ -1035,7 +1037,7 @@
       const textSpan = document.getElementById(`like-text-${itemId}`);
       const btn = document.getElementById(`like-btn-${itemId}`);
 
-      let localDelta = parseInt(localStorage.getItem('liked_delta_' + itemId) || '0', 10);
+      let localDelta = parseInt(localStorage.getItem('liked_delta_' + item.id) || '0', 10);
 
       if (isCurrentlyLiked) {
         localStorage.removeItem(storageKey);
@@ -1094,7 +1096,7 @@
 
         const marker = L.marker(pos, { icon: customIcon });
 
-        // On pin click: open side photo panel (leaving pin icon 100% unobscured and displaying a larger photo)
+        // On pin click: open side photo panel on LEFT, and position pin icon slightly to the RIGHT for a balanced view
         marker.on('click', function(e) {
           L.DomEvent.stopPropagation(e);
           openSidePanel(item);
