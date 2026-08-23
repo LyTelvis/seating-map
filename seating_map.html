@@ -575,7 +575,7 @@
     </div>
     <span class="header-badge" id="seating-count">0 seating locations</span>
     <button class="view-toggle-btn" id="view-toggle-btn" onclick="toggleMapView()">🌐 World</button>
-    <button class="style-select-btn" id="style-toggle-btn" onclick="cycleMapStyle()">🗺️ Style: Voyager</button>
+    <button class="style-select-btn" id="style-toggle-btn" onclick="cycleMapStyle()">🗺️ Style: Positron</button>
     <span class="admin-indicator" id="admin-tag" style="display: none;">Owner Edit Mode</span>
   </div>
 
@@ -598,18 +598,18 @@
     let globalBounds = [];
     let metroVancouverBounds = [];
 
-    // Base Map Tile Options
+    // Base Map Tile Options (Positron active default)
     const MAP_STYLES = [
+      {
+        id: 'positron',
+        name: 'Light Minimalist (Positron)',
+        url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+      },
       {
         id: 'voyager',
         name: 'Voyager (Soft Clean)',
         url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-      },
-      {
-        id: 'positron',
-        name: 'Light Minimalist',
-        url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
       },
       {
@@ -626,7 +626,7 @@
       }
     ];
 
-    let currentStyleIndex = 0; // Default: CartoDB Voyager
+    let currentStyleIndex = 0; // Default: CartoDB Positron (Light Minimalist)
 
     // Initialize Map
     const map = L.map('map', {
