@@ -587,7 +587,7 @@
       document.getElementById('admin-tag').style.display = 'inline';
     }
 
-    // Greater Vancouver & Victoria / BC Region Bounding Box (Lat: 48.0 - 50.0, Lng: -124.5 - -122.0)
+    // Default Metro Vancouver Center
     const DEFAULT_VANCOUVER_CENTER = [49.2785, -123.1175];
     const DEFAULT_VANCOUVER_ZOOM = 12;
 
@@ -941,7 +941,7 @@
         const pos = [item.latitude, item.longitude];
         globalBounds.push(pos);
 
-        // Check if item falls in Metro Vancouver / Victoria / BC Coast region (Lat: 48.0 - 50.5, Lng: -125.0 - -121.0)
+        // Filter Metro Vancouver & Victoria / BC Coast region (Lat: 48.0 - 50.5, Lng: -125.0 - -121.0)
         if (item.latitude >= 48.0 && item.latitude <= 50.5 && item.longitude >= -125.0 && item.longitude <= -121.0) {
           metroVancouverBounds.push(pos);
         }
