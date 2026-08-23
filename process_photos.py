@@ -68,7 +68,7 @@ def sync_to_github():
         if not os.path.exists(os.path.join(WORKSPACE_DIR, ".git")):
             return
         
-        print("\n🔄 Syncing updates to GitHub (LyTelvis/chair-map)...")
+        print("\n🔄 Syncing updates to GitHub (LyTelvis/seating-map)...")
         subprocess.run(["git", "add", "seating_data.json", "seating_map.csv", "seating_map.html", "02_Mapped/"], cwd=WORKSPACE_DIR, capture_output=True)
         commit_res = subprocess.run(["git", "commit", "-m", "Auto-update seating map data and photos"], cwd=WORKSPACE_DIR, capture_output=True, text=True)
         
