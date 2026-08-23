@@ -491,7 +491,7 @@
       width: 32px;
       height: 42px;
       cursor: pointer;
-      filter: drop-shadow(0px 3px 6px rgba(0, 0, 0, 0.25));
+      filter: drop-shadow(0px 3px 6px rgba(0, 0, 0, 0.3));
       transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
 
@@ -502,12 +502,21 @@
     .marker-pin-wrapper.active-pin {
       transform: scale(1.25) translateY(-5px);
       z-index: 1000 !important;
-      filter: drop-shadow(0px 4px 10px rgba(234, 67, 53, 0.4));
+      filter: drop-shadow(0px 4px 10px rgba(2, 132, 199, 0.5));
     }
 
     .marker-pin-svg {
       width: 100%;
       height: 100%;
+    }
+
+    .marker-pin-icon-inner {
+      position: absolute;
+      top: 7px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 13px;
+      line-height: 1;
     }
 
     .save-btn {
@@ -669,6 +678,10 @@
     let activeSeatingItem = null;
     let markerMap = {}; // Map item.id -> { marker, item }
 
+    // Pin Colors: Unselected = Red (#ea4335), Selected = Blue (#0284c7)
+    const COLOR_UNSELECTED = '#ea4335';
+    const COLOR_SELECTED = '#0284c7';
+
     // Initialize Map with CartoDB Positron (Light Minimalist) permanently
     const map = L.map('map', {
       zoomControl: true
@@ -684,22 +697,18 @@
     let activePinningFilename = null;
 
     /**
-     * Create Pin HTML
-     * - Default (unselected): RED pin body (#ea4335) with WHITE chair icon (#ffffff)
-     * - Selected (active): WHITE pin body (#ffffff, red border) with RED chair icon (#ea4335)
+     * Create Pin HTML with 🪑 Emoji (Reverted to previous icon style)
+     * - Unselected Pins: Red body (#ea4335)
+     * - Selected Pin: Blue body (#0284c7)
      */
-    function createPinHtml(isActive = false) {
-      const pinFill = isActive ? '#ffffff' : '#ea4335';
-      const pinStroke = isActive ? 'stroke="#ea4335" stroke-width="1.8"' : 'stroke="#c2410c" stroke-width="0.5"';
-      const chairFill = isActive ? '#ea4335' : '#ffffff';
-      
+    function createPinHtml(color = COLOR_UNSELECTED, emoji = '🪑', isActive = false) {
       return `
         <div class="marker-pin-wrapper ${isActive ? 'active-pin' : ''}">
           <svg class="marker-pin-svg" viewBox="0 0 32 42" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M16 0C7.163 0 0 7.163 0 16C0 27.2 16 42 16 42C16 42 32 27.2 32 16C32 7.163 24.837 0 16 0Z" fill="${pinFill}" ${pinStroke}/>
-            <!-- Chair Vector Icon -->
-            <path transform="translate(8, 6) scale(0.65)" d="M5 2a1 1 0 0 0-1 1v7H3a1 1 0 0 0-1 1v5a1 1 0 0 0 1 1h1v6a1 1 0 1 0 2 0v-6h12v6a1 1 0 1 0 2 0v-6h1a1 1 0 0 0 1-1v-5a1 1 0 0 0-1-1h-1V3a1 1 0 0 0-1-1H5zm1 2h12v6H6V4z" fill="${chairFill}"/>
+            <path d="M16 0C7.163 0 0 7.163 0 16C0 27.2 16 42 16 42C16 42 32 27.2 32 16C32 7.163 24.837 0 16 0Z" fill="${color}"/>
+            <circle cx="16" cy="15" r="10" fill="white"/>
           </svg>
+          <div class="marker-pin-icon-inner">${emoji}</div>
         </div>
       `;
     }
@@ -734,7 +743,8 @@
       Object.keys(markerMap).forEach(id => {
         const entry = markerMap[id];
         const isSelected = (id === selectedId);
-        const iconHtml = createPinHtml(isSelected);
+        const color = isSelected ? COLOR_SELECTED : COLOR_UNSELECTED;
+        const iconHtml = createPinHtml(color, '🪑', isSelected);
 
         const newIcon = L.divIcon({
           html: iconHtml,
@@ -808,7 +818,7 @@
       const panel = document.getElementById('side-photo-panel');
       if (panel) panel.classList.remove('active');
       activeSeatingItem = null;
-      updateMarkerColors(null); // Reset all pins back to default red pin with white chair
+      updateMarkerColors(null); // Reset all pins back to Red
     }
 
     // Close side panel when clicking empty area on map
@@ -986,14 +996,7 @@
       }
 
       const customIcon = L.divIcon({
-        html: `
-          <div class="marker-pin-wrapper active-pin">
-            <svg class="marker-pin-svg" viewBox="0 0 32 42" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M16 0C7.163 0 0 7.163 0 16C0 27.2 16 42 16 42C16 42 32 27.2 32 16C32 7.163 24.837 0 16 0Z" fill="#3b82f6"/>
-              <path transform="translate(8, 6) scale(0.65)" d="M5 2a1 1 0 0 0-1 1v7H3a1 1 0 0 0-1 1v5a1 1 0 0 0 1 1h1v6a1 1 0 1 0 2 0v-6h12v6a1 1 0 1 0 2 0v-6h1a1 1 0 0 0 1-1v-5a1 1 0 0 0-1-1h-1V3a1 1 0 0 0-1-1H5zm1 2h12v6H6V4z" fill="#ffffff"/>
-            </svg>
-          </div>
-        `,
+        html: createPinHtml('#3b82f6', '📍', true),
         className: 'custom-pin-div',
         iconSize: [32, 42],
         iconAnchor: [16, 42]
@@ -1121,7 +1124,7 @@
         }
 
         const customIcon = L.divIcon({
-          html: createPinHtml(false), // Default: Red Pin Body + White Chair Icon
+          html: createPinHtml(COLOR_UNSELECTED, '🪑', false), // Default: Red pin body
           className: 'custom-pin-div',
           iconSize: [32, 42],
           iconAnchor: [16, 42]
@@ -1131,7 +1134,7 @@
 
         markerMap[item.id] = { marker, item };
 
-        // On pin click: open side photo panel on LEFT, and set active marker color to WHITE body + RED chair
+        // On pin click: open side photo panel on LEFT, and set active marker color to BLUE
         marker.on('click', function(e) {
           L.DomEvent.stopPropagation(e);
           openSidePanel(item);
