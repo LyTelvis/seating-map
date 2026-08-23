@@ -1233,8 +1233,15 @@
     function closeSidePanel() {
       const panel = document.getElementById('side-photo-panel');
       if (panel) panel.classList.remove('active');
+      
+      const lastItem = activeSeatingItem;
       activeSeatingItem = null;
       updateMarkerColors(null);
+
+      // When dismissing photo/pin, smoothly center the map directly on the deselected pin location
+      if (lastItem && lastItem.latitude && lastItem.longitude) {
+        map.setView([lastItem.latitude, lastItem.longitude], map.getZoom(), { animate: true });
+      }
     }
 
     function startRelocateMode(itemId) {
