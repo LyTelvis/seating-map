@@ -566,6 +566,40 @@ class SeatingMapHTTPHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_header("Content-Type", "application/json")
                 self.end_headers()
                 self.wfile.write(json.dumps({"success": False, "error": str(e)}).encode("utf-8"))
+
+        elif self.path == "/api/update_location":
+            try:
+                payload = json.loads(post_data.decode("utf-8"))
+                item_id = payload.get("id")
+                lat = float(payload.get("latitude"))
+                lng = float(payload.get("longitude"))
+
+                data = load_data()
+                updated = False
+                for item in data:
+                    if item.get("id") == item_id or item.get("image_path") == item_id:
+                        item["latitude"] = round(lat, 6)
+                        item["longitude"] = round(lng, 6)
+                        updated = True
+                        break
+
+                if updated:
+                    save_data(data)
+                    sync_to_github()
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"success": True, "data": data}).encode("utf-8"))
+                else:
+                    self.send_response(404)
+                    self.send_header("Content-Type", "application/json")
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"success": False, "error": "Item not found"}).encode("utf-8"))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": False, "error": str(e)}).encode("utf-8"))
         else:
             self.send_response(404)
             self.end_headers()
