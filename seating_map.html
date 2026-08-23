@@ -724,9 +724,9 @@
     @media (max-width: 768px) {
       /* Single Unified Bottom Control Bar on Mobile */
       .header-bar {
-        bottom: 12px;
-        padding: 6px 10px;
-        gap: 6px;
+        bottom: 10px;
+        padding: 5px 10px;
+        gap: 5px;
         width: 94%;
         flex-direction: column;
         border-radius: 20px;
@@ -759,16 +759,16 @@
         font-size: 11px;
       }
 
-      /* Photo Panel Drawer -> Mobile Bottom Sheet Drawer positioned ABOVE bottom control bar */
+      /* Photo Panel Drawer -> Lower Half of Mobile Screen (max-height: 44vh, bottom: 85px) */
       .side-photo-panel {
         top: auto;
-        bottom: 95px;
+        bottom: 85px;
         left: 3%;
         width: 94%;
-        max-height: 50vh;
-        border-radius: 20px;
+        max-height: 44vh;
+        border-radius: 18px;
         transform: translateY(150%);
-        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.22);
         z-index: 1100;
       }
 
@@ -777,7 +777,7 @@
       }
 
       .side-panel-img-container {
-        height: 150px;
+        height: 140px;
       }
 
       .nav-arrow-btn {
@@ -1217,10 +1217,10 @@
       const currentZoom = map.getZoom();
       const targetZoom = Math.max(currentZoom, 15);
 
-      // On Mobile: Subtract latitude offset so map center is SOUTH of pin -> pin renders high up in TOP ~20% of screen!
-      // On Desktop: Subtract longitude offset so map center is WEST of pin -> pin renders to the RIGHT of left drawer!
+      // On Mobile: Offset latitude so selected pin renders at 1/4 (25%) down from the top of the mobile screen
+      // On Desktop: Offset longitude WEST (-lngOffset) so pin renders to the RIGHT of left drawer
       if (isMobile) {
-        const latOffset = 0.0075 / Math.pow(2, targetZoom - 15);
+        const latOffset = 0.0048 / Math.pow(2, targetZoom - 15);
         const balancedCenter = [item.latitude - latOffset, item.longitude];
         map.setView(balancedCenter, targetZoom, { animate: true });
       } else {
