@@ -39,7 +39,7 @@
       z-index: 1;
     }
 
-    /* Bottom Floating Header Bar */
+    /* Bottom Floating Header Bar (Identical layout for Public & Owner Edit modes) */
     .header-bar {
       position: absolute;
       bottom: 24px;
@@ -113,13 +113,23 @@
       box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
     }
 
+    /* Owner Edit Mode Badge (Positioned floating at Top Right) */
     .admin-indicator {
-      font-size: 11px;
+      position: absolute;
+      top: 16px;
+      right: 20px;
+      z-index: 1500;
+      font-size: 12px;
       font-weight: 600;
       background: #dcfce7;
       color: #15803d;
-      padding: 2px 8px;
-      border-radius: 10px;
+      padding: 6px 14px;
+      border-radius: 20px;
+      border: 1px solid #bbf7d0;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      display: none;
+      align-items: center;
+      gap: 6px;
     }
 
     /* Location Search Control Bar (Top Center) */
@@ -677,6 +687,11 @@
     <button class="location-search-btn" onclick="searchLocation()">Search Map</button>
   </div>
 
+  <!-- Floating Owner Edit Mode Badge (Top Right) -->
+  <div class="admin-indicator" id="admin-tag">
+    ⚙️ Owner Edit Mode
+  </div>
+
   <!-- Floating Pinning Instruction Bar -->
   <div class="pinning-mode-bar" id="pinning-bar">
     <span>📍 Click on map to set location for <strong id="pinning-filename">photo</strong></span>
@@ -721,7 +736,7 @@
 
   <div id="map"></div>
 
-  <!-- Bottom Floating Header Bar -->
+  <!-- Bottom Floating Header Bar (Identical layout to Public view) -->
   <div class="header-bar" id="header-bar">
     <div class="header-title">
       🪑 Public Seating Tracker
@@ -733,8 +748,6 @@
       <button class="view-btn active" id="btn-vancouver" onclick="setMetroVancouverView()">📍 Metro Vancouver</button>
       <button class="view-btn" id="btn-world" onclick="setWorldView()">🌐 World</button>
     </div>
-
-    <span class="admin-indicator" id="admin-tag" style="display: none;">Owner Edit Mode</span>
   </div>
 
   <div id="toast" class="toast"></div>
@@ -745,7 +758,8 @@
     const isAdmin = isLocalhost || urlParams.get('admin') === 'true';
 
     if (isAdmin) {
-      document.getElementById('admin-tag').style.display = 'inline';
+      const adminTag = document.getElementById('admin-tag');
+      if (adminTag) adminTag.style.display = 'flex';
     }
 
     // Helper to get local or relative API endpoint URL
