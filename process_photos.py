@@ -577,7 +577,7 @@ class SeatingMapHTTPHandler(http.server.SimpleHTTPRequestHandler):
                 data = load_data()
                 updated = False
                 for item in data:
-                    if item.get("id") == item_id or item.get("image_path") == item_id:
+                    if item.get("id") == item_id or item.get("image_path") == item_id or item.get("filename") == item_id:
                         item["latitude"] = round(lat, 6)
                         item["longitude"] = round(lng, 6)
                         updated = True
