@@ -11,6 +11,8 @@ import http.server
 import socketserver
 import webbrowser
 import threading
+import argparse
+import time
 import subprocess
 
 # Try importing Pillow
@@ -22,7 +24,14 @@ except ImportError:
 
 WORKSPACE_DIR = os.path.dirname(os.path.abspath(__file__))
 INBOX_DIR = os.path.join(WORKSPACE_DIR, "01_Inbox")
+MAPPED_DIR = os.path.join(WORKSPACE_DIR, "02_Mapped")
+UNMAPPED_DIR = os.path.join(WORKSPACE_DIR, "03_Unmapped")
 THUMBS_DIR = os.path.join(MAPPED_DIR, "thumbs")
+DATA_FILE = os.path.join(WORKSPACE_DIR, "seating_data.json")
+CSV_FILE = os.path.join(WORKSPACE_DIR, "seating_map.csv")
+MAP_HTML_FILE = os.path.join(WORKSPACE_DIR, "seating_map.html")
+
+PORT = 8000
 
 def ensure_directories():
     for d in [INBOX_DIR, MAPPED_DIR, UNMAPPED_DIR, THUMBS_DIR]:
@@ -686,9 +695,116 @@ def run_server():
         print("\nStopping web server.")
         httpd.server_close()
 
+def scan_apple_photos(album_name="Seating Map"):
+    """Export photos from a specified Apple Photos album directly to 01_Inbox."""
+    print(f"\n🍎 Scanning Apple Photos album '{album_name}'...")
+    ensure_directories()
+
+    as_script = f'''
+    tell application "Photos"
+        if not (exists album "{album_name}") then
+            return "ALBUM_NOT_FOUND"
+        end if
+        set targetAlbum to album "{album_name}"
+        set photoItems to media items of targetAlbum
+        set exportPath to "{INBOX_DIR}"
+        export photoItems to POSIX file exportPath with using originals
+        return "SUCCESS"
+    end tell
+    '''
+    try:
+        res = subprocess.run(["osascript", "-e", as_script], capture_output=True, text=True)
+        if "ALBUM_NOT_FOUND" in res.stdout:
+            print(f"⚠️ Apple Photos album '{album_name}' not found. Please create an album named '{album_name}' in Apple Photos!")
+            return False
+        elif "SUCCESS" in res.stdout:
+            print(f"✅ Successfully exported photos from Apple Photos album '{album_name}' into 01_Inbox!")
+            return True
+        else:
+            print(f"ℹ️ Apple Photos export response: {res.stderr.strip() or res.stdout.strip()}")
+            return False
+    except Exception as e:
+        print(f"Error accessing Apple Photos: {e}")
+        return False
+
+def scan_external_folder(folder_path):
+    """Scans any specified Mac folder, copies un-uploaded photos to 01_Inbox, skipping existing photos."""
+    expanded_path = os.path.expanduser(folder_path)
+    if not os.path.exists(expanded_path):
+        print(f"⚠️ Folder not found: {folder_path}")
+        return 0
+
+    print(f"\n📂 Scanning external folder: {expanded_path}...")
+    ensure_directories()
+    existing_data = load_data()
+    valid_exts = {".jpg", ".jpeg", ".png", ".heic"}
+
+    files = [
+        f for f in os.listdir(expanded_path)
+        if os.path.isfile(os.path.join(expanded_path, f)) and os.path.splitext(f)[1].lower() in valid_exts and not f.startswith(".")
+    ]
+
+    copied_count = 0
+    for fn in files:
+        src = os.path.join(expanded_path, fn)
+        lat, lng, ts = extract_exif_data(src)
+        dupe, reason = check_duplicate(fn, lat, lng, existing_data)
+        if dupe:
+            print(f"  ⏭️ Skipping existing photo: '{fn}' ({reason})")
+            continue
+
+        dest = os.path.join(INBOX_DIR, fn)
+        if not os.path.exists(dest):
+            shutil.copy2(src, dest)
+            copied_count += 1
+            print(f"  📥 Imported new photo: '{fn}'")
+
+    print(f"✅ Imported {copied_count} new photo(s) into 01_Inbox!\n")
+    return copied_count
+
+def start_folder_watcher(interval_seconds=5):
+    """Continuously monitors 01_Inbox in background every N seconds and auto-processes new photos."""
+    print(f"👀 Auto-Watcher active: Monitoring 01_Inbox every {interval_seconds}s for new photos...")
+    def _loop():
+        while True:
+            try:
+                time.sleep(interval_seconds)
+                valid_exts = {".jpg", ".jpeg", ".png", ".heic"}
+                inbox_files = [
+                    f for f in os.listdir(INBOX_DIR)
+                    if os.path.isfile(os.path.join(INBOX_DIR, f)) and os.path.splitext(f)[1].lower() in valid_exts and not f.startswith(".")
+                ]
+                if inbox_files:
+                    print(f"\n🔔 Watcher detected {len(inbox_files)} photo(s) in 01_Inbox! Processing...")
+                    process_inbox()
+            except Exception:
+                pass
+
+    t = threading.Thread(target=_loop, daemon=True)
+    t.start()
+
 def main():
+    parser = argparse.ArgumentParser(description="Seating Map Photo Processor & Server")
+    parser.add_argument("--scan-folder", type=str, help="Scan a custom Mac folder and import un-uploaded photos")
+    parser.add_argument("--apple-photos", type=str, help="Export & ingest photos from an Apple Photos album name (e.g. 'Seating Map')")
+    parser.add_argument("--watch", action="store_true", help="Enable continuous background watcher for 01_Inbox")
+    parser.add_argument("--no-server", action="store_true", help="Process photos without starting local web server")
+
+    args = parser.parse_args()
+
+    if args.apple_photos:
+        scan_apple_photos(args.apple_photos)
+
+    if args.scan_folder:
+        scan_external_folder(args.scan_folder)
+
     process_inbox()
-    run_server()
+
+    if args.watch:
+        start_folder_watcher(interval_seconds=5)
+
+    if not args.no_server:
+        run_server()
 
 if __name__ == "__main__":
     main()
