@@ -1,0 +1,18 @@
+# macOS files
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Python files
+.venv/
+__pycache__/
+*.pyc
+
+# Local Inbox & Unused photos
+01_Inbox/*
+!01_Inbox/.gitkeep
+03_Needs_GPS/*
+!03_Needs_GPS/.gitkeep
+
+# Archive of legacy sub-projects (kept locally on Mac, not uploaded to GitHub)
+_archive_previous_methods/

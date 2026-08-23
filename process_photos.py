@@ -11,6 +11,7 @@ import http.server
 import socketserver
 import webbrowser
 import threading
+import subprocess
 
 # Try importing Pillow
 try:
@@ -60,6 +61,28 @@ def save_csv(data):
         lines.append(f'"{cid}","{fn}","{ip}",{lat},{lng},"{ts}","{c}"\n')
     with open(CSV_FILE, "w", encoding="utf-8") as f:
         f.writelines(lines)
+
+def sync_to_github():
+    """Automatically commits and pushes updated data/photos to GitHub if git is configured."""
+    try:
+        if not os.path.exists(os.path.join(WORKSPACE_DIR, ".git")):
+            return
+        
+        print("\n🔄 Syncing updates to GitHub (LyTelvis/chair-map)...")
+        subprocess.run(["git", "add", "chairs_data.json", "chairs_map.csv", "02_Mapped/"], cwd=WORKSPACE_DIR, capture_output=True)
+        commit_res = subprocess.run(["git", "commit", "-m", "Auto-update chair map data and photos"], cwd=WORKSPACE_DIR, capture_output=True, text=True)
+        
+        if "nothing to commit" in commit_res.stdout.lower() or "nothing to commit" in commit_res.stderr.lower():
+            print("ℹ️ Everything up to date on GitHub.")
+            return
+
+        push_res = subprocess.run(["git", "push", "origin", "main"], cwd=WORKSPACE_DIR, capture_output=True, text=True)
+        if push_res.returncode == 0:
+            print("✅ Successfully pushed updates to GitHub Pages live map!")
+        else:
+            print(f"ℹ️ Git push output: {push_res.stderr.strip() or push_res.stdout.strip()}")
+    except Exception as e:
+        print(f"Note: Git auto-sync skipped: {e}")
 
 def convert_to_degrees(value):
     """Helper to convert EXIF GPS tuple (D, M, S) to float degrees."""
@@ -135,7 +158,6 @@ def extract_exif_data(filepath):
 def process_inbox():
     ensure_directories()
     data = load_data()
-    existing_filenames = {item.get("filename") for item in data}
 
     valid_extensions = {".jpg", ".jpeg", ".png", ".heic"}
     inbox_files = [
@@ -197,6 +219,9 @@ def process_inbox():
         print(f"   • ⚠️ {missing_gps_count} photo(s) MISSING GEOLOCATION (moved to 03_Needs_GPS)")
     print("--------------------------------------------------\n")
 
+    if processed_count > 0:
+        sync_to_github()
+
     return data
 
 class ChairMapHTTPHandler(http.server.SimpleHTTPRequestHandler):
@@ -222,12 +247,13 @@ class ChairMapHTTPHandler(http.server.SimpleHTTPRequestHandler):
 
                 if updated:
                     save_data(data)
+                    sync_to_github()
                     self.send_response(200)
                     self.send_header("Content-Type", "application/json")
                     self.end_headers()
                     self.wfile.write(json.dumps({"success": True, "data": data}).encode("utf-8"))
                 else:
-                    self.send_response(444)
+                    self.send_response(404)
                     self.send_header("Content-Type", "application/json")
                     self.end_headers()
                     self.wfile.write(json.dumps({"success": False, "error": "Item not found"}).encode("utf-8"))
@@ -241,7 +267,6 @@ class ChairMapHTTPHandler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
 
     def log_message(self, format, *args):
-        # Silence routine static request logging to keep console clean
         pass
 
 def run_server():
