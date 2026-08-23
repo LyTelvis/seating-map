@@ -991,9 +991,15 @@
 
       panel.classList.add('active');
 
-      // Offset longitude west (-0.0070) so clicked pin icon positions cleanly to the RIGHT of the photo panel
-      const balancedCenter = [item.latitude, item.longitude - 0.0070];
-      map.setView(balancedCenter, 15, { animate: true });
+      // Preserve current zoom level if user is zoomed in deeper than level 15
+      const currentZoom = map.getZoom();
+      const targetZoom = Math.max(currentZoom, 15);
+
+      // Calculate dynamic longitude offset proportional to zoom level so pin stays positioned ideally on the right
+      const lngOffset = 0.0070 / Math.pow(2, targetZoom - 15);
+      const balancedCenter = [item.latitude, item.longitude - lngOffset];
+
+      map.setView(balancedCenter, targetZoom, { animate: true });
     }
 
     function closeSidePanel() {
