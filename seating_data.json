@@ -1032,5 +1032,16 @@
     "comment": "",
     "likes": 0,
     "thumb_path": "02_Mapped/thumbs/thumb_IMG_6944.jpg"
+  },
+  {
+    "id": "seating_1787515148_0",
+    "filename": "IMG_6157.jpeg",
+    "image_path": "02_Mapped/IMG_6157.jpeg",
+    "thumb_path": "02_Mapped/thumbs/thumb_IMG_6157.jpg",
+    "latitude": 49.270614,
+    "longitude": -123.102814,
+    "timestamp": "2026-08-23 12:23:44",
+    "comment": "",
+    "likes": 0
   }
 ]
