@@ -288,7 +288,25 @@
       width: 100%;
       height: 100%;
       object-fit: cover;
-      cursor: pointer;
+      cursor: default;
+    }
+
+    .full-size-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #0284c7;
+      text-decoration: none;
+      transition: color 0.2s ease;
+      width: fit-content;
+    }
+
+    .full-size-link:hover {
+      color: #0369a1;
+      text-decoration: underline;
     }
 
     /* Highly Transparent Overlay Navigation Arrows on Photo */
@@ -883,7 +901,7 @@
     <button class="side-panel-close-btn" onclick="closeSidePanel()">✕</button>
     <div class="side-panel-img-container">
       <button class="nav-arrow-btn nav-arrow-left" id="btn-nav-left" title="Closest photo to the left (West)">⟨</button>
-      <img id="side-panel-img" src="" alt="Seating Photo" onclick="window.open(this.src, '_blank')" />
+      <img id="side-panel-img" src="" alt="Seating Photo" />
       <button class="nav-arrow-btn nav-arrow-right" id="btn-nav-right" title="Closest photo to the right (East)">⟩</button>
     </div>
     <div class="side-panel-body">
@@ -891,6 +909,7 @@
         <span id="side-panel-coords">📍 0.00000, 0.00000</span>
         <div id="side-panel-relocate-container"></div>
         <span id="side-panel-date">📅 N/A</span>
+        <a id="side-panel-fullsize-link" href="#" target="_blank" class="full-size-link">🔍 See full size image</a>
       </div>
       <div id="side-panel-comment-container"></div>
       <div class="side-panel-like-bar" id="side-panel-like-container"></div>
@@ -1261,6 +1280,11 @@
       }
 
       date.innerText = `📅 ${item.timestamp || 'N/A'}`;
+
+      const fullsizeLink = document.getElementById('side-panel-fullsize-link');
+      if (fullsizeLink) {
+        fullsizeLink.href = item.image_path || '#';
+      }
 
       const hasComment = item.comment && item.comment.trim() !== '';
 
@@ -1809,8 +1833,68 @@
         console.log('Comment save fallback');
       }
 
-      showToast('✅ Comment saved!');
-    }
+    // Google Maps-style Mobile Touch Gestures: Double-Tap to Zoom In, Double-Tap & Drag Up/Down to Zoom In/Out
+    (function initMobileGoogleMapsGestures() {
+      const mapEl = document.getElementById('map');
+      if (!mapEl) return;
+
+      let lastTapTime = 0;
+      let lastTapPos = null;
+      let isDoubleTapDrag = false;
+      let dragStartPosY = 0;
+      let startZoom = 12;
+
+      mapEl.addEventListener('touchstart', function(e) {
+        if (e.touches.length !== 1) return;
+
+        const touch = e.touches[0];
+        const now = Date.now();
+        const touchX = touch.clientX;
+        const touchY = touch.clientY;
+
+        const timeDiff = now - lastTapTime;
+        const dist = lastTapPos ? Math.hypot(touchX - lastTapPos.x, touchY - lastTapPos.y) : 999;
+
+        if (timeDiff > 40 && timeDiff < 340 && dist < 40) {
+          // Double-tap drag gesture initiated!
+          isDoubleTapDrag = true;
+          dragStartPosY = touchY;
+          startZoom = map.getZoom();
+
+          if (map.dragging && map.dragging.enabled()) {
+            map.dragging.disable();
+          }
+        } else {
+          lastTapTime = now;
+          lastTapPos = { x: touchX, y: touchY };
+        }
+      }, { passive: true });
+
+      mapEl.addEventListener('touchmove', function(e) {
+        if (!isDoubleTapDrag || e.touches.length !== 1) return;
+
+        const touchY = e.touches[0].clientY;
+        const deltaY = dragStartPosY - touchY; // Moving UP = zoom IN, Moving DOWN = zoom OUT
+
+        const zoomChange = deltaY / 75.0;
+        const targetZoom = Math.min(Math.max(startZoom + zoomChange, 2), 19);
+
+        map.setZoom(targetZoom, { animate: false });
+        if (e.cancelable) e.preventDefault();
+      }, { passive: false });
+
+      function resetGesture() {
+        if (isDoubleTapDrag) {
+          isDoubleTapDrag = false;
+          if (map.dragging && !map.dragging.enabled()) {
+            map.dragging.enable();
+          }
+        }
+      }
+
+      mapEl.addEventListener('touchend', resetGesture);
+      mapEl.addEventListener('touchcancel', resetGesture);
+    })();
 
     window.addEventListener('DOMContentLoaded', loadSeatingData);
   </script>
