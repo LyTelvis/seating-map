@@ -720,9 +720,11 @@
       opacity: 1;
     }
 
-    /* Mobile Responsive Styles (Screen Width <= 768px) */
+    /* ==========================================================================
+       MOBILE RESPONSIVE STYLES (Screen Width <= 768px)
+       ========================================================================== */
     @media (max-width: 768px) {
-      /* Single Unified Bottom Bar on Mobile */
+      /* Single Unified Bottom Control Bar on Mobile */
       .header-bar {
         bottom: 12px;
         padding: 6px 10px;
@@ -730,6 +732,7 @@
         width: 94%;
         flex-direction: column;
         border-radius: 20px;
+        z-index: 1200;
       }
 
       .search-input-group {
@@ -758,16 +761,17 @@
         font-size: 11px;
       }
 
-      /* Photo Panel Drawer -> Converts to Mobile Bottom Sheet Drawer */
+      /* Photo Panel Drawer -> Mobile Bottom Sheet Drawer positioned ABOVE bottom control bar */
       .side-photo-panel {
         top: auto;
-        bottom: 12px;
+        bottom: 95px;
         left: 3%;
         width: 94%;
-        max-height: 65vh;
+        max-height: 52vh;
         border-radius: 20px;
-        transform: translateY(130%);
-        box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.25);
+        transform: translateY(150%);
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+        z-index: 1100;
       }
 
       .side-photo-panel.active {
@@ -775,7 +779,7 @@
       }
 
       .side-panel-img-container {
-        height: 170px;
+        height: 160px;
       }
 
       .nav-arrow-btn {
@@ -1211,21 +1215,14 @@
 
       const isMobile = window.innerWidth <= 768;
 
-      // On mobile: fade out bottom bar when photo bottom sheet is active
-      const headerBar = document.getElementById('header-bar');
-      if (isMobile && headerBar) {
-        headerBar.style.opacity = '0';
-        headerBar.style.pointerEvents = 'none';
-      }
-
       // Preserve current zoom level if user is zoomed in deeper than level 15
       const currentZoom = map.getZoom();
       const targetZoom = Math.max(currentZoom, 15);
 
-      // On Mobile: Offset latitude NORTH (+latOffset) so pin sits in top half of screen above bottom drawer
+      // On Mobile: Offset latitude NORTH (+latOffset) so pin sits in top half of screen above bottom drawer & bottom bar
       // On Desktop: Offset longitude WEST (-lngOffset) so pin sits to the RIGHT of left drawer
       if (isMobile) {
-        const latOffset = 0.0035 / Math.pow(2, targetZoom - 15);
+        const latOffset = 0.0065 / Math.pow(2, targetZoom - 15);
         const balancedCenter = [item.latitude + latOffset, item.longitude];
         map.setView(balancedCenter, targetZoom, { animate: true });
       } else {
@@ -1240,12 +1237,6 @@
       if (panel) panel.classList.remove('active');
       activeSeatingItem = null;
       updateMarkerColors(null);
-
-      const headerBar = document.getElementById('header-bar');
-      if (headerBar) {
-        headerBar.style.opacity = '1';
-        headerBar.style.pointerEvents = 'auto';
-      }
     }
 
     function startRelocateMode(itemId) {
