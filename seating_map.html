@@ -258,7 +258,7 @@
       position: absolute;
       top: 12px;
       right: 12px;
-      z-index: 10;
+      z-index: 15;
       background: rgba(15, 23, 42, 0.6);
       color: white;
       border: none;
@@ -292,6 +292,44 @@
       height: 100%;
       object-fit: cover;
       cursor: pointer;
+    }
+
+    /* Semi-transparent Overlay Navigation Arrows on Photo */
+    .nav-arrow-btn {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 12;
+      background: rgba(15, 23, 42, 0.55);
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      font-size: 20px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(4px);
+      transition: all 0.2s ease;
+      user-select: none;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    }
+
+    .nav-arrow-btn:hover {
+      background: rgba(15, 23, 42, 0.85);
+      border-color: rgba(255, 255, 255, 0.8);
+      transform: translateY(-50%) scale(1.1);
+    }
+
+    .nav-arrow-left {
+      left: 10px;
+    }
+
+    .nav-arrow-right {
+      right: 10px;
     }
 
     .side-panel-body {
@@ -613,7 +651,7 @@
     .marker-pin-wrapper.active-pin {
       transform: scale(1.25) translateY(-5px);
       z-index: 1000 !important;
-      filter: drop-shadow(0px 4px 10px rgba(2, 132, 199, 0.5));
+      filter: drop-shadow(0px 4px 10px rgba(2, 132, 199, 0.6));
     }
 
     .marker-pin-svg {
@@ -751,7 +789,9 @@
   <div class="side-photo-panel" id="side-photo-panel">
     <button class="side-panel-close-btn" onclick="closeSidePanel()">✕</button>
     <div class="side-panel-img-container">
+      <button class="nav-arrow-btn nav-arrow-left" id="btn-nav-left" title="Previous photo to the left (West)">⟨</button>
       <img id="side-panel-img" src="" alt="Seating Photo" onclick="window.open(this.src, '_blank')" />
+      <button class="nav-arrow-btn nav-arrow-right" id="btn-nav-right" title="Next photo to the right (East)">⟩</button>
     </div>
     <div class="side-panel-body">
       <div class="side-panel-meta">
@@ -875,6 +915,36 @@
       `;
     }
 
+    // Helper to get adjacent items spatially sorted from West (Left) to East (Right)
+    function getAdjacentPhotos(currentItem) {
+      if (!currentItem) return { prev: null, next: null };
+
+      // Collect all unique mapped items
+      const uniqueItemsMap = {};
+      Object.keys(markerMap).forEach(k => {
+        const item = markerMap[k].item;
+        if (item && item.latitude && item.longitude) {
+          uniqueItemsMap[item.id || item.filename] = item;
+        }
+      });
+      const allItems = Object.values(uniqueItemsMap);
+
+      if (allItems.length <= 1) return { prev: null, next: null };
+
+      // Sort items spatially by longitude ascending (West to East)
+      allItems.sort((a, b) => a.longitude - b.longitude);
+
+      const curId = currentItem.id || currentItem.filename;
+      const idx = allItems.findIndex(i => (i.id || i.filename) === curId);
+
+      if (idx === -1) return { prev: null, next: null };
+
+      const prevItem = allItems[(idx - 1 + allItems.length) % allItems.length];
+      const nextItem = allItems[(idx + 1) % allItems.length];
+
+      return { prev: prevItem, next: nextItem };
+    }
+
     // Search Location using OpenStreetMap Nominatim API
     async function searchLocation() {
       const input = document.getElementById('location-search-input');
@@ -949,10 +1019,15 @@
       }
     }
 
-    function updateMarkerColors(selectedId = null) {
-      Object.keys(markerMap).forEach(id => {
-        const entry = markerMap[id];
-        const isSelected = (id === selectedId);
+    function updateMarkerColors(selectedItem = null) {
+      const selectedId = selectedItem ? (selectedItem.id || selectedItem.filename) : null;
+
+      Object.keys(markerMap).forEach(key => {
+        const entry = markerMap[key];
+        const isSelected = selectedId && (
+          key === selectedId || 
+          (entry.item && (entry.item.id === selectedId || entry.item.filename === selectedId))
+        );
         const color = isSelected ? COLOR_SELECTED : COLOR_UNSELECTED;
         const iconHtml = createPinHtml(color, '🪑', isSelected);
 
@@ -969,7 +1044,7 @@
 
     function openSidePanel(item) {
       activeSeatingItem = item;
-      updateMarkerColors(item.id);
+      updateMarkerColors(item);
 
       const panel = document.getElementById('side-photo-panel');
       const img = document.getElementById('side-panel-img');
@@ -981,6 +1056,35 @@
 
       img.src = item.image_path || '';
       coords.innerText = `📍 ${item.latitude.toFixed(5)}, ${item.longitude.toFixed(5)}`;
+
+      // Configure adjacent left/right transparent overlay buttons
+      const { prev, next } = getAdjacentPhotos(item);
+      const btnLeft = document.getElementById('btn-nav-left');
+      const btnRight = document.getElementById('btn-nav-right');
+
+      if (btnLeft) {
+        if (prev) {
+          btnLeft.style.display = 'flex';
+          btnLeft.onclick = function(e) {
+            e.stopPropagation();
+            openSidePanel(prev);
+          };
+        } else {
+          btnLeft.style.display = 'none';
+        }
+      }
+
+      if (btnRight) {
+        if (next) {
+          btnRight.style.display = 'flex';
+          btnRight.onclick = function(e) {
+            e.stopPropagation();
+            openSidePanel(next);
+          };
+        } else {
+          btnRight.style.display = 'none';
+        }
+      }
 
       const isEditActive = isAdmin && currentMode === 'edit';
 
