@@ -343,16 +343,28 @@ class SeatingMapHTTPHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=WORKSPACE_DIR, **kwargs)
 
+    def _send_cors_headers(self):
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+
+    def do_OPTIONS(self):
+        self.send_response(200)
+        self._send_cors_headers()
+        self.end_headers()
+
     def do_GET(self):
         if self.path == "/api/pending_unmapped":
             pending = get_pending_unmapped()
             self.send_response(200)
+            self._send_cors_headers()
             self.send_header("Content-Type", "application/json")
             self.end_headers()
             self.wfile.write(json.dumps({"success": True, "pending": pending}).encode("utf-8"))
         elif self.path == "/api/pending_duplicates":
             duplicates = get_pending_duplicates()
             self.send_response(200)
+            self._send_cors_headers()
             self.send_header("Content-Type", "application/json")
             self.end_headers()
             self.wfile.write(json.dumps({"success": True, "duplicates": duplicates}).encode("utf-8"))
@@ -587,11 +599,13 @@ class SeatingMapHTTPHandler(http.server.SimpleHTTPRequestHandler):
                     save_data(data)
                     sync_to_github()
                     self.send_response(200)
+                    self._send_cors_headers()
                     self.send_header("Content-Type", "application/json")
                     self.end_headers()
                     self.wfile.write(json.dumps({"success": True, "data": data}).encode("utf-8"))
                 else:
                     self.send_response(404)
+                    self._send_cors_headers()
                     self.send_header("Content-Type", "application/json")
                     self.end_headers()
                     self.wfile.write(json.dumps({"success": False, "error": "Item not found"}).encode("utf-8"))
