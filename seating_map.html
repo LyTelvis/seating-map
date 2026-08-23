@@ -39,28 +39,29 @@
       z-index: 1;
     }
 
-    /* Top Bar Header */
+    /* Bottom Floating Header Bar */
     .header-bar {
       position: absolute;
-      top: 16px;
+      bottom: 24px;
       left: 50%;
       transform: translateX(-50%);
       z-index: 1000;
-      background: rgba(255, 255, 255, 0.95);
-      backdrop-filter: blur(8px);
-      padding: 10px 20px;
+      background: rgba(255, 255, 255, 0.96);
+      backdrop-filter: blur(10px);
+      padding: 10px 22px;
       border-radius: 30px;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-      border: 1px solid rgba(226, 232, 240, 0.8);
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+      border: 1px solid rgba(226, 232, 240, 0.9);
       display: flex;
       align-items: center;
       gap: 12px;
       flex-wrap: wrap;
       justify-content: center;
+      transition: opacity 0.3s ease;
     }
 
     .header-title {
-      font-size: 15px;
+      font-size: 14px;
       font-weight: 700;
       color: #0f172a;
       display: flex;
@@ -73,7 +74,7 @@
       font-weight: 600;
       background: #e0f2fe;
       color: #0284c7;
-      padding: 3px 99px;
+      padding: 3px 10px;
       border-radius: 12px;
     }
 
@@ -95,7 +96,7 @@
     .view-toggle-btn:hover {
       background: #e2e8f0;
       border-color: #94a3b8;
-      transform: scale(1.03);
+      transform: scale(1.04);
     }
 
     .admin-indicator {
@@ -107,10 +108,10 @@
       border-radius: 10px;
     }
 
-    /* Banners Container */
+    /* Banners Container (Top) */
     .banner-container {
       position: absolute;
-      top: 75px;
+      top: 16px;
       left: 50%;
       transform: translateX(-50%);
       z-index: 1000;
@@ -378,7 +379,7 @@
       padding: 0;
       border-radius: 14px;
       overflow: hidden;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+      box-shadow: 0 12px 30px rgba(0,0,0,0.18);
       border: 1px solid #e2e8f0;
     }
 
@@ -540,23 +541,13 @@
 </head>
 <body>
 
-  <!-- Top Header Bar -->
-  <div class="header-bar" id="header-bar">
-    <div class="header-title">
-      🪑 Public Seating Tracker
-    </div>
-    <span class="header-badge" id="seating-count">0 seating locations</span>
-    <button class="view-toggle-btn" id="view-toggle-btn" onclick="toggleMapView()">🌐 World</button>
-    <span class="admin-indicator" id="admin-tag" style="display: none;">Owner Edit Mode</span>
-  </div>
-
   <!-- Floating Pinning Instruction Bar -->
   <div class="pinning-mode-bar" id="pinning-bar">
     <span>📍 Click anywhere on the map to drop pin for <strong id="pinning-filename">photo</strong></span>
     <button class="cancel-pinning-btn" onclick="exitPinMode()">Cancel</button>
   </div>
 
-  <!-- Banners Container for Duplicates and Unmapped -->
+  <!-- Banners Container for Duplicates and Unmapped (Top) -->
   <div class="banner-container">
     <!-- Duplicate Warning Drawer Banner -->
     <div class="duplicate-banner" id="duplicate-banner">
@@ -576,6 +567,17 @@
   </div>
 
   <div id="map"></div>
+
+  <!-- Bottom Floating Header Bar -->
+  <div class="header-bar" id="header-bar">
+    <div class="header-title">
+      🪑 Public Seating Tracker
+    </div>
+    <span class="header-badge" id="seating-count">0 seating locations</span>
+    <button class="view-toggle-btn" id="view-toggle-btn" onclick="toggleMapView()">🌐 World</button>
+    <span class="admin-indicator" id="admin-tag" style="display: none;">Owner Edit Mode</span>
+  </div>
+
   <div id="toast" class="toast"></div>
 
   <script>
@@ -1004,9 +1006,12 @@
         const marker = L.marker(pos, { icon: customIcon })
           .bindPopup(popupContent, { maxWidth: 280 });
 
-        // When user clicks pin icon, smoothly zoom in closer (zoom level 17) centered on marker
+        // When user clicks pin icon:
+        // 1. Shift view slightly north (+0.0012 lat) so clicked pin sits lower and popup card displays perfectly in viewport center
+        // 2. Smoothly zoom in to level 17
         marker.on('click', function() {
-          map.setView(pos, 17, { animate: true });
+          const popupCenter = [pos[0] + 0.0012, pos[1]];
+          map.setView(popupCenter, 17, { animate: true });
         });
 
         markersGroup.addLayer(marker);
