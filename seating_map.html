@@ -81,17 +81,134 @@
       border-radius: 10px;
     }
 
-    /* Unmapped Photos Banner Drawer */
-    .unmapped-banner {
+    /* Banners Container */
+    .banner-container {
       position: absolute;
       top: 70px;
       left: 50%;
       transform: translateX(-50%);
       z-index: 1000;
+      width: 92%;
+      max-width: 720px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      pointer-events: none;
+    }
+
+    /* Duplicate Warning Drawer Banner */
+    .duplicate-banner {
       background: rgba(255, 255, 255, 0.98);
       backdrop-filter: blur(10px);
-      width: 90%;
-      max-width: 700px;
+      padding: 14px;
+      border-radius: 16px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+      border: 2px solid #ef4444;
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+      pointer-events: auto;
+    }
+
+    .duplicate-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #991b1b;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .duplicate-card {
+      background: #fef2f2;
+      border: 1px solid #fca5a5;
+      border-radius: 10px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .dupe-comparison {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .dupe-col {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .dupe-col-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: #64748b;
+    }
+
+    .dupe-thumb {
+      width: 100%;
+      height: 90px;
+      object-fit: cover;
+      border-radius: 6px;
+      border: 1px solid #cbd5e1;
+    }
+
+    .dupe-reason-tag {
+      font-size: 11px;
+      font-weight: 600;
+      color: #991b1b;
+      background: #fee2e2;
+      padding: 3px 8px;
+      border-radius: 6px;
+      text-align: center;
+    }
+
+    .dupe-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-add-anyway {
+      flex: 1;
+      background: #16a34a;
+      color: white;
+      border: none;
+      padding: 6px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn-add-anyway:hover {
+      background: #15803d;
+    }
+
+    .btn-skip-dupe {
+      flex: 1;
+      background: #dc2626;
+      color: white;
+      border: none;
+      padding: 6px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn-skip-dupe:hover {
+      background: #b91c1c;
+    }
+
+    /* Unmapped Photos Drawer Banner */
+    .unmapped-banner {
+      background: rgba(255, 255, 255, 0.98);
+      backdrop-filter: blur(10px);
       padding: 14px;
       border-radius: 16px;
       box-shadow: 0 8px 30px rgba(0,0,0,0.15);
@@ -99,6 +216,7 @@
       display: none;
       flex-direction: column;
       gap: 10px;
+      pointer-events: auto;
     }
 
     .unmapped-title {
@@ -127,7 +245,6 @@
       flex-direction: column;
       align-items: center;
       gap: 6px;
-
     }
 
     .unmapped-thumb {
@@ -377,12 +494,23 @@
     <button class="cancel-pinning-btn" onclick="exitPinMode()">Cancel</button>
   </div>
 
-  <!-- Unmapped Photos Drawer Banner (Local Admin Only) -->
-  <div class="unmapped-banner" id="unmapped-banner">
-    <div class="unmapped-title">
-      <span>⚠️ <span id="unmapped-count">0</span> photo(s) missing EXIF location metadata:</span>
+  <!-- Banners Container for Duplicates and Unmapped -->
+  <div class="banner-container">
+    <!-- Duplicate Warning Drawer Banner -->
+    <div class="duplicate-banner" id="duplicate-banner">
+      <div class="duplicate-title">
+        <span>⚠️ Potential Duplicate Photo Detected (<span id="duplicate-count">0</span>):</span>
+      </div>
+      <div id="duplicate-list"></div>
     </div>
-    <div class="unmapped-list" id="unmapped-list"></div>
+
+    <!-- Unmapped Photos Drawer Banner (Local Admin Only) -->
+    <div class="unmapped-banner" id="unmapped-banner">
+      <div class="unmapped-title">
+        <span>⚠️ <span id="unmapped-count">0</span> photo(s) missing EXIF location metadata:</span>
+      </div>
+      <div class="unmapped-list" id="unmapped-list"></div>
+    </div>
   </div>
 
   <div id="map"></div>
@@ -410,8 +538,6 @@
 
     let markersGroup = L.featureGroup().addTo(map);
     let tempMarker = null;
-
-    // Pin Dropping State
     let activePinningFilename = null;
 
     function showToast(message) {
@@ -444,7 +570,78 @@
       }
 
       if (isAdmin) {
+        checkPendingDuplicates();
         checkPendingUnmapped();
+      }
+    }
+
+    async function checkPendingDuplicates() {
+      try {
+        const res = await fetch('/api/pending_duplicates');
+        const result = await res.json();
+        if (result.success && result.duplicates && result.duplicates.length > 0) {
+          renderDuplicatesBanner(result.duplicates);
+        } else {
+          document.getElementById('duplicate-banner').style.display = 'none';
+        }
+      } catch (e) {
+        document.getElementById('duplicate-banner').style.display = 'none';
+      }
+    }
+
+    function renderDuplicatesBanner(dupeList) {
+      const banner = document.getElementById('duplicate-banner');
+      const listContainer = document.getElementById('duplicate-list');
+      document.getElementById('duplicate-count').innerText = dupeList.length;
+
+      listContainer.innerHTML = '';
+
+      dupeList.forEach(item => {
+        const existing = item.existing_match || {};
+        const card = document.createElement('div');
+        card.className = 'duplicate-card';
+        card.innerHTML = `
+          <div class="dupe-reason-tag">⚠️ Matches existing seating (${item.match_reason})</div>
+          <div class="dupe-comparison">
+            <div class="dupe-col">
+              <span class="dupe-col-label">New Photo (Inbox)</span>
+              <img src="${item.image_path}" class="dupe-thumb" alt="New Photo" />
+              <span style="font-size:10px; font-weight:600; text-align:center;">${item.filename}</span>
+            </div>
+            <div style="font-size:18px; font-weight:700; color:#94a3b8;">↔</div>
+            <div class="dupe-col">
+              <span class="dupe-col-label">Existing Mapped Photo</span>
+              <img src="${existing.image_path || ''}" class="dupe-thumb" alt="Existing Mapped" />
+              <span style="font-size:10px; font-weight:600; text-align:center;">${existing.filename || 'Mapped'}</span>
+            </div>
+          </div>
+          <div class="dupe-actions">
+            <button class="btn-add-anyway" onclick="resolveDuplicate('${item.filename}', 'add_anyway')">✅ Add as New Entry</button>
+            <button class="btn-skip-dupe" onclick="resolveDuplicate('${item.filename}', 'skip')">🗑️ Move to Unmapped (Skip)</button>
+          </div>
+        `;
+        listContainer.appendChild(card);
+      });
+
+      banner.style.display = 'flex';
+    }
+
+    async function resolveDuplicate(filename, action) {
+      try {
+        const res = await fetch('/api/confirm_duplicate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filename, action })
+        });
+        const result = await res.json();
+        if (result.success) {
+          showToast(action === 'add_anyway' ? `✅ Added ${filename} to map!` : `Moved ${filename} to 03_Unmapped`);
+          if (result.data) renderMarkers(result.data);
+          checkPendingDuplicates();
+          checkPendingUnmapped();
+        }
+      } catch (e) {
+        showToast('⚠️ Error resolving duplicate.');
       }
     }
 
@@ -489,7 +686,7 @@
     function enterPinMode(filename) {
       activePinningFilename = filename;
       document.getElementById('header-bar').style.display = 'none';
-      document.getElementById('unmapped-banner').style.display = 'none';
+      document.querySelector('.banner-container').style.display = 'none';
       document.getElementById('pinning-filename').innerText = filename;
       document.getElementById('pinning-bar').style.display = 'flex';
       document.getElementById('map').style.cursor = 'crosshair';
@@ -500,6 +697,7 @@
     function exitPinMode() {
       activePinningFilename = null;
       document.getElementById('header-bar').style.display = 'flex';
+      document.querySelector('.banner-container').style.display = 'flex';
       document.getElementById('pinning-bar').style.display = 'none';
       document.getElementById('map').style.cursor = '';
       if (tempMarker) {

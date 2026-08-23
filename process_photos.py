@@ -155,9 +155,33 @@ def extract_exif_data(filepath):
         print(f"Error reading EXIF from {os.path.basename(filepath)}: {e}")
         return None, None, None
 
+def check_duplicate(filename, lat, lng, existing_data):
+    """Checks if a photo matches an existing mapped photo by filename or location."""
+    filename_lower = filename.lower()
+    for item in existing_data:
+        ex_fn = item.get("filename", "").lower()
+        ex_lat = item.get("latitude")
+        ex_lng = item.get("longitude")
+
+        fn_match = (filename_lower == ex_fn)
+        geo_match = False
+        if lat is not None and lng is not None and ex_lat is not None and ex_lng is not None:
+            if abs(lat - ex_lat) < 0.00005 and abs(lng - ex_lng) < 0.00005:
+                geo_match = True
+
+        if fn_match or geo_match:
+            reasons = []
+            if fn_match:
+                reasons.append("same filename")
+            if geo_match:
+                reasons.append("identical geolocation")
+            return item, " & ".join(reasons)
+    return None, None
+
 def get_pending_unmapped():
-    """Returns list of photos currently in 01_Inbox that lack GPS metadata."""
+    """Returns list of non-duplicate photos currently in 01_Inbox that lack GPS metadata."""
     ensure_directories()
+    existing_data = load_data()
     valid_extensions = {".jpg", ".jpeg", ".png", ".heic"}
     inbox_files = [
         f for f in os.listdir(INBOX_DIR)
@@ -168,6 +192,12 @@ def get_pending_unmapped():
     for filename in inbox_files:
         src_path = os.path.join(INBOX_DIR, filename)
         lat, lng, timestamp = extract_exif_data(src_path)
+        
+        # Check duplicate first
+        dupe_item, dupe_reason = check_duplicate(filename, lat, lng, existing_data)
+        if dupe_item:
+            continue # Handled by pending_duplicates API
+
         if lat is None or lng is None:
             now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             pending.append({
@@ -177,6 +207,35 @@ def get_pending_unmapped():
             })
 
     return pending
+
+def get_pending_duplicates():
+    """Returns list of photos in 01_Inbox that match existing mapped photos by filename or location."""
+    ensure_directories()
+    existing_data = load_data()
+    valid_extensions = {".jpg", ".jpeg", ".png", ".heic"}
+    inbox_files = [
+        f for f in os.listdir(INBOX_DIR)
+        if os.path.isfile(os.path.join(INBOX_DIR, f)) and os.path.splitext(f)[1].lower() in valid_extensions and not f.startswith(".")
+    ]
+
+    duplicates = []
+    for filename in inbox_files:
+        src_path = os.path.join(INBOX_DIR, filename)
+        lat, lng, timestamp = extract_exif_data(src_path)
+        dupe_item, dupe_reason = check_duplicate(filename, lat, lng, existing_data)
+        if dupe_item:
+            now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            duplicates.append({
+                "filename": filename,
+                "image_path": f"01_Inbox/{filename}",
+                "latitude": round(lat, 6) if lat is not None else None,
+                "longitude": round(lng, 6) if lng is not None else None,
+                "timestamp": timestamp or now_str,
+                "match_reason": dupe_reason,
+                "existing_match": dupe_item
+            })
+
+    return duplicates
 
 def process_inbox():
     ensure_directories()
@@ -195,10 +254,18 @@ def process_inbox():
     print(f"\n🔍 Found {len(inbox_files)} photo(s) in 01_Inbox. Processing...\n")
     processed_count = 0
     pending_manual_count = 0
+    duplicate_count = 0
 
     for filename in inbox_files:
         src_path = os.path.join(INBOX_DIR, filename)
         lat, lng, timestamp = extract_exif_data(src_path)
+
+        # Check duplicate
+        dupe_item, dupe_reason = check_duplicate(filename, lat, lng, data)
+        if dupe_item:
+            duplicate_count += 1
+            print(f"  ⚠️ [POSSIBLE DUPLICATE] '{filename}' matches existing photo ({dupe_reason}) -> Prompting user on map!")
+            continue
 
         if lat is not None and lng is not None:
             # Generate unique filename if collision
@@ -234,10 +301,12 @@ def process_inbox():
     save_data(data)
 
     print("\n--------------------------------------------------")
-    print(f"✅ Auto-Processing Complete:")
+    print(f"✅ Auto-Processing Summary:")
     print(f"   • {processed_count} photo(s) auto-mapped with EXIF GPS")
+    if duplicate_count > 0:
+        print(f"   • ⚠️ {duplicate_count} photo(s) flagged as POSSIBLE DUPLICATE (verify on map)")
     if pending_manual_count > 0:
-        print(f"   • ⚠️ {pending_manual_count} photo(s) pending MANUAL PIN DROP on map!")
+        print(f"   • ⚠️ {pending_manual_count} photo(s) pending MANUAL PIN DROP on map")
     print("--------------------------------------------------\n")
 
     if processed_count > 0:
@@ -256,6 +325,12 @@ class SeatingMapHTTPHandler(http.server.SimpleHTTPRequestHandler):
             self.send_header("Content-Type", "application/json")
             self.end_headers()
             self.wfile.write(json.dumps({"success": True, "pending": pending}).encode("utf-8"))
+        elif self.path == "/api/pending_duplicates":
+            duplicates = get_pending_duplicates()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"success": True, "duplicates": duplicates}).encode("utf-8"))
         else:
             super().do_GET()
 
@@ -263,7 +338,70 @@ class SeatingMapHTTPHandler(http.server.SimpleHTTPRequestHandler):
         content_length = int(self.headers.get("Content-Length", 0))
         post_data = self.rfile.read(content_length)
 
-        if self.path == "/api/manual_pin":
+        if self.path == "/api/confirm_duplicate":
+            try:
+                payload = json.loads(post_data.decode("utf-8"))
+                filename = payload.get("filename")
+                action = payload.get("action") # "add_anyway" or "skip"
+
+                src_path = os.path.join(INBOX_DIR, filename)
+                data = load_data()
+
+                if action == "add_anyway":
+                    lat, lng, timestamp = extract_exif_data(src_path)
+                    dest_filename = filename
+                    counter = 1
+                    name_part, ext_part = os.path.splitext(filename)
+                    while os.path.exists(os.path.join(MAPPED_DIR, dest_filename)):
+                        dest_filename = f"{name_part}_{counter}{ext_part}"
+                        counter += 1
+
+                    dest_path = os.path.join(MAPPED_DIR, dest_filename)
+                    shutil.move(src_path, dest_path)
+
+                    rel_path = f"02_Mapped/{dest_filename}"
+                    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    item_id = f"seating_{int(datetime.now().timestamp())}_{len(data)}"
+
+                    # If lat/lng missing, use existing match coords if available
+                    if lat is None or lng is None:
+                        existing_match = payload.get("existing_match", {})
+                        lat = existing_match.get("latitude", 0.0)
+                        lng = existing_match.get("longitude", 0.0)
+
+                    data.append({
+                        "id": item_id,
+                        "filename": dest_filename,
+                        "image_path": rel_path,
+                        "latitude": round(lat, 6) if lat is not None else 0.0,
+                        "longitude": round(lng, 6) if lng is not None else 0.0,
+                        "timestamp": timestamp or now_str,
+                        "comment": "Duplicate entry added manually"
+                    })
+                    save_data(data)
+                    sync_to_github()
+
+                elif action == "skip":
+                    if os.path.exists(src_path):
+                        dest_path = os.path.join(UNMAPPED_DIR, filename)
+                        shutil.move(src_path, dest_path)
+
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "success": True, 
+                    "data": load_data(), 
+                    "duplicates": get_pending_duplicates(),
+                    "pending": get_pending_unmapped()
+                }).encode("utf-8"))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": False, "error": str(e)}).encode("utf-8"))
+
+        elif self.path == "/api/manual_pin":
             try:
                 payload = json.loads(post_data.decode("utf-8"))
                 filename = payload.get("filename")
@@ -273,7 +411,6 @@ class SeatingMapHTTPHandler(http.server.SimpleHTTPRequestHandler):
 
                 src_path = os.path.join(INBOX_DIR, filename)
                 if not os.path.exists(src_path):
-                    # Check if file exists elsewhere
                     self.send_response(404)
                     self.send_header("Content-Type", "application/json")
                     self.end_headers()
@@ -311,7 +448,12 @@ class SeatingMapHTTPHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")
                 self.end_headers()
-                self.wfile.write(json.dumps({"success": True, "data": data, "pending": get_pending_unmapped()}).encode("utf-8"))
+                self.wfile.write(json.dumps({
+                    "success": True, 
+                    "data": data, 
+                    "pending": get_pending_unmapped(),
+                    "duplicates": get_pending_duplicates()
+                }).encode("utf-8"))
             except Exception as e:
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json")
@@ -331,7 +473,11 @@ class SeatingMapHTTPHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")
                 self.end_headers()
-                self.wfile.write(json.dumps({"success": True, "pending": get_pending_unmapped()}).encode("utf-8"))
+                self.wfile.write(json.dumps({
+                    "success": True, 
+                    "pending": get_pending_unmapped(),
+                    "duplicates": get_pending_duplicates()
+                }).encode("utf-8"))
             except Exception as e:
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json")
