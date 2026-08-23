@@ -1,0 +1,47 @@
+[
+  {
+    "id": "chair_1787455149_0",
+    "filename": "IMG_6142.jpeg",
+    "image_path": "02_Mapped/IMG_6142.jpeg",
+    "latitude": 49.231669,
+    "longitude": -123.117875,
+    "timestamp": "2026-08-15 15:30:05",
+    "comment": ""
+  },
+  {
+    "id": "chair_1787455210_0",
+    "filename": "IMG_6149.jpeg",
+    "image_path": "02_Mapped/IMG_6149.jpeg",
+    "latitude": 49.255775,
+    "longitude": -123.112397,
+    "timestamp": "2026-08-15 17:49:57",
+    "comment": ""
+  },
+  {
+    "id": "chair_1787455210_1",
+    "filename": "IMG_6148.jpeg",
+    "image_path": "02_Mapped/IMG_6148.jpeg",
+    "latitude": 49.251014,
+    "longitude": -123.112822,
+    "timestamp": "2026-08-15 17:40:42",
+    "comment": ""
+  },
+  {
+    "id": "chair_1787455210_2",
+    "filename": "IMG_6141.jpeg",
+    "image_path": "02_Mapped/IMG_6141.jpeg",
+    "latitude": 49.232083,
+    "longitude": -123.118544,
+    "timestamp": "2026-08-15 15:27:59",
+    "comment": ""
+  },
+  {
+    "id": "chair_1787455210_3",
+    "filename": "IMG_6140.jpeg",
+    "image_path": "02_Mapped/IMG_6140.jpeg",
+    "latitude": 49.232053,
+    "longitude": -123.118561,
+    "timestamp": "2026-08-15 15:27:55",
+    "comment": ""
+  }
+]

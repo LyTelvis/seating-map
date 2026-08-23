@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interactive Chair Map</title>
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Leaflet Map CSS & JS (Standard OpenStreetMap Map Preset) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body, html {
+      width: 100%;
+      height: 100%;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: #f8fafc;
+      color: #0f172a;
+    }
+
+    #map {
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+
+    /* Top Bar Header */
+    .header-bar {
+      position: absolute;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(8px);
+      padding: 10px 20px;
+      border-radius: 30px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      border: 1px solid rgba(226, 232, 240, 0.8);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .header-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #0f172a;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .header-badge {
+      font-size: 12px;
+      font-weight: 600;
+      background: #e0f2fe;
+      color: #0284c7;
+      padding: 3px 9px;
+      border-radius: 12px;
+    }
+
+    .admin-indicator {
+      font-size: 11px;
+      font-weight: 600;
+      background: #dcfce7;
+      color: #15803d;
+      padding: 2px 8px;
+      border-radius: 10px;
+    }
+
+    /* Custom SVG Teardrop Map Pin Icon */
+    .marker-pin-wrapper {
+      position: relative;
+      width: 32px;
+      height: 42px;
+      cursor: pointer;
+      filter: drop-shadow(0px 3px 6px rgba(0, 0, 0, 0.3));
+      transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .marker-pin-wrapper:hover {
+      transform: scale(1.15) translateY(-4px);
+    }
+
+    .marker-pin-svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    .marker-pin-icon-inner {
+      position: absolute;
+      top: 7px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 13px;
+      line-height: 1;
+    }
+
+    /* Popup Styling */
+    .leaflet-popup-content-wrapper {
+      padding: 0;
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+      border: 1px solid #e2e8f0;
+    }
+
+    .leaflet-popup-content {
+      margin: 0;
+      width: 280px !important;
+    }
+
+    .popup-image-container {
+      width: 100%;
+      height: 180px;
+      background-color: #f1f5f9;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .popup-image-container img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      cursor: pointer;
+    }
+
+    .popup-body {
+      padding: 14px;
+    }
+
+    .popup-meta {
+      font-size: 12px;
+      color: #64748b;
+      margin-bottom: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .popup-meta span {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .popup-comment-section {
+      margin-top: 10px;
+      border-top: 1px solid #f1f5f9;
+      padding-top: 10px;
+    }
+
+    .popup-comment-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #334155;
+      margin-bottom: 4px;
+    }
+
+    .popup-comment-text {
+      font-size: 13px;
+      color: #1e293b;
+      line-height: 1.4;
+      background: #f8fafc;
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid #e2e8f0;
+      white-space: pre-wrap;
+    }
+
+    .popup-comment-textarea {
+      width: 100%;
+      height: 65px;
+      padding: 8px;
+      font-family: inherit;
+      font-size: 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      resize: vertical;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .popup-comment-textarea:focus {
+      border-color: #0284c7;
+    }
+
+    .save-btn {
+      margin-top: 8px;
+      width: 100%;
+      padding: 7px;
+      background-color: #0284c7;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 12px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .save-btn:hover {
+      background-color: #0369a1;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #0f172a;
+      color: white;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      z-index: 9999;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+    }
+
+    .toast.show {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header-bar">
+    <div class="header-title">
+      🪑 Public Chair Tracker
+    </div>
+    <span class="header-badge" id="chair-count">0 chairs</span>
+    <span class="admin-indicator" id="admin-tag" style="display: none;">Owner Edit Mode</span>
+  </div>
+
+  <div id="map"></div>
+  <div id="toast" class="toast"></div>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const isAdmin = isLocalhost || urlParams.get('admin') === 'true';
+
+    if (isAdmin) {
+      document.getElementById('admin-tag').style.display = 'inline';
+    }
+
+    // Initialize Map with standard OpenStreetMap tiles (standard map graphic preset)
+    const map = L.map('map', {
+      zoomControl: true
+    }).setView([49.2827, -123.1207], 13);
+
+    // Standard OpenStreetMap Tile Layer
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      maxZoom: 19
+    }).addTo(map);
+
+    let markersGroup = L.featureGroup().addTo(map);
+
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      toast.innerText = message;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2500);
+    }
+
+    // Custom Map Pin SVG Generator
+    function createPinHtml(color = '#0284c7', emoji = '🪑') {
+      return `
+        <div class="marker-pin-wrapper">
+          <svg class="marker-pin-svg" viewBox="0 0 32 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M16 0C7.163 0 0 7.163 0 16C0 27.2 16 42 16 42C16 42 32 27.2 32 16C32 7.163 24.837 0 16 0Z" fill="${color}"/>
+            <circle cx="16" cy="15" r="10" fill="white"/>
+          </svg>
+          <div class="marker-pin-icon-inner">${emoji}</div>
+        </div>
+      `;
+    }
+
+    async function loadChairsData() {
+      try {
+        const response = await fetch('chairs_data.json?t=' + Date.now());
+        if (!response.ok) throw new Error('Data file not found');
+        const chairs = await response.json();
+        renderMarkers(chairs);
+      } catch (err) {
+        console.warn('Error loading chairs_data.json:', err);
+      }
+    }
+
+    function renderMarkers(chairs) {
+      markersGroup.clearLayers();
+      document.getElementById('chair-count').innerText = `${chairs.length} chair${chairs.length === 1 ? '' : 's'}`;
+
+      if (chairs.length === 0) return;
+
+      const bounds = [];
+
+      chairs.forEach(chair => {
+        if (!chair.latitude || !chair.longitude) return;
+
+        const pos = [chair.latitude, chair.longitude];
+        bounds.push(pos);
+
+        // Standard Google Maps style pin icon
+        const customIcon = L.divIcon({
+          html: createPinHtml('#ea4335', '🪑'), // Google Maps classic red pin
+          className: 'custom-pin-div',
+          iconSize: [32, 42],
+          iconAnchor: [16, 42],
+          popupAnchor: [0, -40]
+        });
+
+        const imagePath = chair.image_path || '';
+
+        let popupContent = `
+          <div class="popup-image-container">
+            <img src="${imagePath}" alt="Chair Photo" onclick="window.open('${imagePath}', '_blank')" />
+          </div>
+          <div class="popup-body">
+            <div class="popup-meta">
+              <span>📍 ${chair.latitude.toFixed(5)}, ${chair.longitude.toFixed(5)}</span>
+              <span>📅 ${chair.timestamp || 'N/A'}</span>
+            </div>
+            <div class="popup-comment-section">
+              <div class="popup-comment-label">Description / Comment:</div>
+        `;
+
+        if (isAdmin) {
+          popupContent += `
+            <textarea id="comment-input-${chair.id}" class="popup-comment-textarea" placeholder="Add your notes about this chair...">${chair.comment || ''}</textarea>
+            <button class="save-btn" onclick="saveComment('${chair.id}')">Save Comment</button>
+          `;
+        } else {
+          popupContent += `
+            <div class="popup-comment-text">${chair.comment ? chair.comment : '<em>No comment provided.</em>'}</div>
+          `;
+        }
+
+        popupContent += `
+            </div>
+          </div>
+        `;
+
+        const marker = L.marker(pos, { icon: customIcon })
+          .bindPopup(popupContent, { maxWidth: 280 });
+
+        markersGroup.addLayer(marker);
+      });
+
+      if (bounds.length > 0) {
+        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
+      }
+    }
+
+    async function saveComment(itemId) {
+      const textarea = document.getElementById(`comment-input-${itemId}`);
+      if (!textarea) return;
+
+      const newComment = textarea.value;
+
+      try {
+        const response = await fetch('/api/save_comment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: itemId, comment: newComment })
+        });
+
+        const result = await response.json();
+        if (result.success) {
+          showToast('✅ Comment saved successfully!');
+        } else {
+          showToast('❌ Failed to save comment.');
+        }
+      } catch (err) {
+        showToast('⚠️ Error connecting to server to save comment.');
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', loadChairsData);
+  </script>
+</body>
+</html>

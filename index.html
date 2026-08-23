@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Public Seating Tracker - A public, collaborative archive documenting informal, temporary, and permanent outdoor seating.">
+  <title>Public Seating Tracker | Interactive Map (Telegram Bot)</title>
+  
+  <!-- Modern Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Leaflet Map library -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Ambient background glow elements -->
+  <div class="glow-bg glow-teal"></div>
+  <div class="glow-bg glow-purple"></div>
+ 
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="logo-area">
+        <span class="logo-icon">🪑</span>
+        <div>
+          <h1>Public Seating Tracker</h1>
+          <p class="subtitle">Documenting Public Seating Landscapes</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <a href="https://t.me/public_chair_tracker_bot" target="_blank" class="badge-link" id="db-badge">
+          <span class="dot green"></span> Live Sheets Sync (Telegram Bot)
+        </a>
+      </div>
+    </header>
+
+    <!-- Main Grid -->
+    <main class="dashboard-grid">
+      <!-- Sidebar / Details Panel -->
+      <section class="panel-left">
+        <div class="glass-card main-info">
+          <h2>About the Project</h2>
+          <p>
+            This public archive documents informal, temporary, and permanent outdoor seating. From site-specific log installations to temporary community benches, help us map public seating.
+          </p>
+          
+          <div class="btn-group">
+            <!-- Telegram Bot Chat Link -->
+            <a href="https://t.me/public_chair_tracker_bot" target="_blank" class="btn btn-telegram" id="btn-submit">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.2-.08-.06-.19-.04-.27-.02-.12.02-1.96 1.25-5.54 3.69-.52.36-1 .53-1.42.52-.47-.01-1.37-.26-2.03-.48-.82-.27-1.47-.42-1.42-.88.03-.24.35-.49.96-.75 3.78-1.65 6.31-2.74 7.58-3.27 3.61-1.51 4.36-1.77 4.85-1.78.11 0 .35.03.51.16.13.11.17.26.19.37-.01.08.01.22 0 .34z"/></svg>
+              <span>Add New Seat via Telegram</span>
+            </a>
+            <a href="#guide-modal" class="btn btn-secondary" id="btn-how-to">How it Works</a>
+          </div>
+        </div>
+
+        <!-- Dynamic Statistics -->
+        <div class="glass-card stats-card">
+          <h3>Collection Progress</h3>
+          <div class="stats-grid">
+            <div class="stat-item highlight">
+              <span class="stat-value" id="stat-total">4</span>
+              <span class="stat-label">Seats Mapped</span>
+            </div>
+          </div>
+          
+          <div class="type-distribution">
+            <h4>Seating Categories</h4>
+            <div class="distribution-bars">
+              <div class="dist-row">
+                <span class="type-indicator type-permanent"></span>
+                <span class="dist-label">Permanent</span>
+                <span class="dist-count" id="count-permanent">1</span>
+              </div>
+              <div class="dist-row">
+                <span class="type-indicator type-temporary"></span>
+                <span class="dist-label">Temporary</span>
+                <span class="dist-count" id="count-temporary">1</span>
+              </div>
+              <div class="dist-row">
+                <span class="type-indicator type-off-the-shelf"></span>
+                <span class="dist-label">Off-the-shelf</span>
+                <span class="dist-count" id="count-off-the-shelf">1</span>
+              </div>
+              <div class="dist-row">
+                <span class="type-indicator type-site-specific"></span>
+                <span class="dist-label">Site-specific</span>
+                <span class="dist-count" id="count-site-specific">1</span>
+              </div>
+            </div>
+          </div>
+          
+          <p class="stats-sync-status" id="sync-status">Displaying local template data</p>
+        </div>
+
+        <!-- Legend -->
+        <div class="glass-card legend-card">
+          <h3>Map Legend</h3>
+          <div class="legend-grid">
+            <div class="legend-item">
+              <span class="legend-pin pin-permanent">🔵</span>
+              <div>
+                <strong>Permanent</strong>
+                <p>Bolted benches, concrete blocks, civic furniture</p>
+              </div>
+            </div>
+            <div class="legend-item">
+              <span class="legend-pin pin-temporary">🟢</span>
+              <div>
+                <strong>Temporary</strong>
+                <p>Plaza chairs, community installations, movable seats</p>
+              </div>
+            </div>
+            <div class="legend-item">
+              <span class="legend-pin pin-off-the-shelf">🟠</span>
+              <div>
+                <strong>Off-the-shelf</strong>
+                <p>Ad-hoc plastic or folding chairs, residential transfers</p>
+              </div>
+            </div>
+            <div class="legend-item">
+              <span class="legend-pin pin-site-specific">🔴</span>
+              <div>
+                <strong>Site-specific</strong>
+                <p>Custom designs, log carvings, artist-designed seating</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Map Viewport -->
+      <section class="panel-right">
+        <div class="glass-card map-card">
+          <div class="map-header">
+            <div class="map-title-row">
+              <span class="pulse-icon"></span>
+              <h3>Live Interactive Map</h3>
+            </div>
+            <button class="btn-refresh" id="btn-refresh-data" title="Sync Map Data">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+              <span>Check for updates</span>
+            </button>
+          </div>
+          
+          <div class="map-wrapper">
+            <!-- Loading overlay -->
+            <div class="map-loading" id="map-loader">
+              <div class="spinner"></div>
+              <p>Loading Interactive Map...</p>
+            </div>
+            
+            <!-- Leaflet Map Container -->
+            <div id="map" style="width: 100%; height: 100%; z-index: 1;"></div>
+          </div>
+          
+          <div class="map-footer">
+            <p>💡 Click on any pin to view observations, classification, and photos from the field.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <p>&copy; 2026 Public Seating Tracker. Built with Google Sheets, Telegram Bot, and Google My Maps.</p>
+    </footer>
+  </div>
+
+  <!-- How it works Modal (Targeted via CSS anchor hash) -->
+  <div id="guide-modal" class="modal-overlay">
+    <div class="glass-card modal-content">
+      <div class="modal-header">
+        <h3>How to Contribute</h3>
+        <a href="#" class="modal-close">&times;</a>
+      </div>
+      <div class="modal-body">
+        <div class="step-card">
+          <div class="step-num">1</div>
+          <div class="step-txt">
+            <h4>Start the Telegram Bot</h4>
+            <p>Search for <strong>@public_chair_tracker_bot</strong> on Telegram or click the "Add New Seat via Telegram" button, then tap <strong>/start</strong>.</p>
+          </div>
+        </div>
+        
+        <div class="step-card">
+          <div class="step-num">2</div>
+          <div class="step-txt">
+            <h4>Send Photo & Location</h4>
+            <p>Snap a photo of the seat. Send it as an uncompressed <strong>file/document</strong> to auto-extract GPS coordinates from the photo's metadata, or upload a standard photo and attach the location pin.</p>
+          </div>
+        </div>
+        
+        <div class="step-card">
+          <div class="step-num">3</div>
+          <div class="step-txt">
+            <h4>Categorize & Save</h4>
+            <p>Choose the seating type (Permanent, Temporary, etc.) and type any comments. The bot uploads the photo to Google Drive and appends the entry to our Google Sheet database instantly!</p>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <a href="#" class="btn btn-telegram">Got it!</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Client-side script to fetch/parse published CSV data -->
+  <script>
+    // Configuration: Replace with your Google Sheets published CSV URL.
+    // To publish your sheet: File > Share > Publish to web > Select SeatingData & CSV > Publish.
+    const PUBLISHED_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRdU3pmIUvEu4uclT7S3QokMRfvdPb6xC9V1oa6TDHqTKoBwj4g_r5Vfx9qPYReO4VU1RUSrosv7Mdd/pub?gid=1223327636&single=true&output=csv'; // Leave empty to use local template data below.
+
+    // Local fallback dummy data (Vancouver locations)
+    const localTemplateData = [
+      { 
+        timestamp: '2026-06-15 14:10:45',
+        latitude: 49.2827,
+        longitude: -123.1207,
+        photoUrl: 'https://images.unsplash.com/photo-1505691938895-1758d7feb511?w=600&auto=format&fit=crop',
+        type: 'Permanent',
+        description: 'Red metal bench in front of the Vancouver Art Gallery. Classic design.'
+      },
+      {
+        timestamp: '2026-06-15 15:30:12',
+        latitude: 49.2902,
+        longitude: -123.1345,
+        photoUrl: 'https://images.unsplash.com/photo-1596162954151-cd540094b919?w=600&auto=format&fit=crop',
+        type: 'Temporary',
+        description: 'Color plaza chairs near the Stanley Park entrance. Highly movable.'
+      },
+      {
+        timestamp: '2026-06-16 09:15:22',
+        latitude: 49.2734,
+        longitude: -123.1174,
+        photoUrl: 'https://images.unsplash.com/photo-1562184552-997c461abbe6?w=600&auto=format&fit=crop',
+        type: 'Off-the-shelf',
+        description: 'Ad-hoc plastic folding chairs placed under a tree in Yaletown.'
+      },
+      {
+        timestamp: '2026-06-16 11:45:00',
+        latitude: 49.2856,
+        longitude: -123.1042,
+        photoUrl: 'https://images.unsplash.com/photo-1449247700740-9330197e766a?w=600&auto=format&fit=crop',
+        type: 'Site-specific',
+        description: 'Custom carved log bench in Gastown. Integrates with the sidewalk.'
+      }
+    ];
+
+    // Handle map loading spinner
+    const loader = document.getElementById('map-loader');
+    
+    function hideLoader() {
+      if (loader) {
+        loader.classList.add('fade-out');
+        setTimeout(() => {
+          loader.style.display = 'none';
+        }, 400);
+      }
+    }
+
+    // Initialize Leaflet Map
+    const map = L.map('map', {
+      zoomControl: true,
+      scrollWheelZoom: true
+    }).setView([49.2827, -123.1207], 13); // Default view centered on Vancouver
+
+    // Add CartoDB Dark Matter tile layer for premium dark appearance
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+      subdomains: 'abcd',
+      maxZoom: 20
+    }).addTo(map);
+
+    // Keep track of active markers to clear them on refresh
+    let mapMarkers = [];
+
+    // Parse CSV helper function
+    function parseCSV(text) {
+      const lines = text.split('\n');
+      if (lines.length < 2) return [];
+      
+      const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+      
+      const timeIndex = headers.indexOf('Timestamp');
+      const latIndex = headers.indexOf('Latitude');
+      const lngIndex = headers.indexOf('Longitude');
+      const photoIndex = headers.indexOf('Photo URL');
+      const typeIndex = headers.indexOf('Seating Type');
+      const descIndex = headers.indexOf('Description');
+      
+      const rows = [];
+      for (let i = 1; i < lines.length; i++) {
+        if (!lines[i]) continue;
+        
+        let row = [];
+        let inQuotes = false;
+        let currentValue = '';
+        
+        for (let j = 0; j < lines[i].length; j++) {
+          let char = lines[i][j];
+          if (char === '"') {
+            inQuotes = !inQuotes;
+          } else if (char === ',' && !inQuotes) {
+            row.push(currentValue.trim().replace(/^"|"$/g, ''));
+            currentValue = '';
+          } else {
+            currentValue += char;
+          }
+        }
+        row.push(currentValue.trim().replace(/^"|"$/g, ''));
+        
+        if (row.length >= headers.length) {
+          rows.push({
+            timestamp: row[timeIndex] || '',
+            latitude: parseFloat(row[latIndex]),
+            longitude: parseFloat(row[lngIndex]),
+            photoUrl: row[photoIndex] || '',
+            type: row[typeIndex] || '',
+            description: row[descIndex] || ''
+          });
+        }
+      }
+      return rows;
+    }
+
+    // Render Markers on Map
+    function renderMapMarkers(items) {
+      // Clear existing markers
+      mapMarkers.forEach(marker => map.removeLayer(marker));
+      mapMarkers = [];
+
+      const bounds = [];
+
+      items.forEach(item => {
+        if (isNaN(item.latitude) || isNaN(item.longitude)) return;
+
+        const pos = [item.latitude, item.longitude];
+        bounds.push(pos);
+
+        // Determine marker colors
+        const typeLower = item.type ? item.type.toLowerCase() : '';
+        let colorClass = 'pin-permanent-marker';
+        let badgeClass = 'badge-permanent';
+        
+        if (typeLower.includes('permanent')) {
+          colorClass = 'pin-permanent-marker';
+          badgeClass = 'badge-permanent';
+        } else if (typeLower.includes('temporary')) {
+          colorClass = 'pin-temporary-marker';
+          badgeClass = 'badge-temporary';
+        } else if (typeLower.includes('off') || typeLower.includes('shelf')) {
+          colorClass = 'pin-off-the-shelf-marker';
+          badgeClass = 'badge-off-the-shelf';
+        } else if (typeLower.includes('site') || typeLower.includes('specific')) {
+          colorClass = 'pin-site-specific-marker';
+          badgeClass = 'badge-site-specific';
+        }
+
+        // Create Custom HTML Glow Pin Icon
+        const customIcon = L.divIcon({
+          html: `<div class="custom-pin ${colorClass}"></div>`,
+          className: 'custom-div-icon',
+          iconSize: [16, 16],
+          iconAnchor: [8, 8]
+        });
+
+        // Construct Glassmorphic Popup
+        let popupHtml = `
+          <strong>🪑 Public Seat</strong>
+          <span class="popup-category-badge ${badgeClass}">${item.type}</span>
+        `;
+
+        if (item.description && item.description.trim() !== '') {
+          popupHtml += `<div class="popup-description">"${item.description}"</div>`;
+        }
+
+        if (item.photoUrl && item.photoUrl.trim() !== '' && item.photoUrl.startsWith('http')) {
+          popupHtml += `
+            <div class="popup-image-container">
+              <img src="${item.photoUrl}" alt="Seating Photo" loading="lazy" />
+            </div>
+          `;
+        }
+
+        popupHtml += `
+          <span class="popup-details">
+            📍 Location: ${item.latitude.toFixed(5)}, ${item.longitude.toFixed(5)}<br>
+            📅 Logged: ${item.timestamp || 'N/A'}
+          </span>
+        `;
+
+        // Plot marker & bind popup
+        const marker = L.marker(pos, { icon: customIcon })
+          .bindPopup(popupHtml, { maxWidth: 280, minWidth: 220 })
+          .addTo(map);
+
+        mapMarkers.push(marker);
+      });
+
+      // Fit map bounds to show all markers
+      if (bounds.length > 0) {
+        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
+      }
+      
+      // Hide spinner loader
+      hideLoader();
+    }
+
+    // Update the UI statistics
+    function updateStatistics(items, isLive = false) {
+      const total = items.length;
+      
+      let permanent = 0;
+      let temporary = 0;
+      let offTheShelf = 0;
+      let siteSpecific = 0;
+
+      items.forEach(item => {
+        const type = item.type ? item.type.toLowerCase() : '';
+        if (type.includes('permanent')) permanent++;
+        else if (type.includes('temporary')) temporary++;
+        else if (type.includes('off') || type.includes('shelf')) offTheShelf++;
+        else if (type.includes('site') || type.includes('specific')) siteSpecific++;
+      });
+
+      // Animate Counter function
+      function animateCounter(id, target) {
+        const element = document.getElementById(id);
+        if (!element) return;
+        
+        let start = 0;
+        const duration = 800; // ms
+        const stepTime = Math.max(Math.floor(duration / (target || 1)), 15);
+        
+        if (target === 0) {
+          element.textContent = '0';
+          return;
+        }
+
+        const timer = setInterval(() => {
+          start++;
+          element.textContent = start;
+          if (start >= target) {
+            element.textContent = target;
+            clearInterval(timer);
+          }
+        }, stepTime);
+      }
+
+      animateCounter('stat-total', total);
+      animateCounter('count-permanent', permanent);
+      animateCounter('count-temporary', temporary);
+      animateCounter('count-off-the-shelf', offTheShelf);
+      animateCounter('count-site-specific', siteSpecific);
+
+      const statusEl = document.getElementById('sync-status');
+      if (statusEl) {
+        if (isLive) {
+          statusEl.textContent = '● Connected: Real-time collection stats';
+          statusEl.style.color = '#10b981';
+        } else {
+          statusEl.textContent = 'Displaying local template data';
+          statusEl.style.color = 'rgba(255, 255, 255, 0.4)';
+        }
+      }
+
+      // Render map markers using Leaflet
+      renderMapMarkers(items);
+    }
+
+    // Fetch Sheets CSV
+    async function fetchSheetsData() {
+      if (!PUBLISHED_CSV_URL) {
+        console.log("No PUBLISHED_CSV_URL provided. Displaying local template data.");
+        updateStatistics(localTemplateData, false);
+        return;
+      }
+
+      try {
+        const response = await fetch(PUBLISHED_CSV_URL);
+        if (!response.ok) throw new Error("Network response error");
+        
+        const csvText = await response.text();
+        const parsedData = parseCSV(csvText);
+        updateStatistics(parsedData, true);
+      } catch (err) {
+        console.warn("Failed to fetch published sheet CSV: ", err);
+        updateStatistics(localTemplateData, false);
+        const statusEl = document.getElementById('sync-status');
+        if (statusEl) {
+          statusEl.textContent = 'Connection error. Displaying local cache.';
+          statusEl.style.color = '#ef4444';
+        }
+      }
+    }
+
+    // Refresh Button Event
+    const btnRefresh = document.getElementById('btn-refresh-data');
+    if (btnRefresh) {
+      btnRefresh.addEventListener('click', (e) => {
+        e.preventDefault();
+        
+        // Add rotation animation
+        const svg = btnRefresh.querySelector('svg');
+        if (svg) svg.classList.add('spinning');
+        
+        // Fetch spreadsheet updates
+        fetchSheetsData();
+        
+        setTimeout(() => {
+          if (svg) svg.classList.remove('spinning');
+        }, 1000);
+      });
+    }
+
+    // Initial load
+    window.addEventListener('DOMContentLoaded', () => {
+      fetchSheetsData();
+    });
+  </script>
+</body>
+</html>
