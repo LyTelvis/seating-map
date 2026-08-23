@@ -82,6 +82,30 @@
       color: #0f172a;
     }
 
+    .search-clear-btn {
+      background: rgba(148, 163, 184, 0.25);
+      color: #64748b;
+      border: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      flex-shrink: 0;
+      user-select: none;
+      line-height: 1;
+    }
+
+    .search-clear-btn:hover {
+      background: #ef4444;
+      color: white;
+    }
+
     .location-search-btn {
       background: #0284c7;
       color: white;
@@ -855,7 +879,8 @@
   <div class="header-bar" id="header-bar">
     <!-- Search Input & Button -->
     <div class="search-input-group">
-      <input type="text" id="location-search-input" class="location-search-input" placeholder="🔍 Search address, park, or landmark..." onkeypress="if(event.key === 'Enter') searchLocation()" />
+      <input type="text" id="location-search-input" class="location-search-input" placeholder="🔍 Search address, park, or landmark..." oninput="toggleSearchClearBtn()" onkeypress="if(event.key === 'Enter') searchLocation()" />
+      <button class="search-clear-btn" id="search-clear-btn" onclick="clearSearchLocation()" title="Clear search & unpin location" style="display: none;">✕</button>
       <button class="location-search-btn" onclick="searchLocation()">Search Map</button>
     </div>
 
@@ -1016,6 +1041,30 @@
       return { prev: prevItem, next: nextItem };
     }
 
+    function toggleSearchClearBtn() {
+      const input = document.getElementById('location-search-input');
+      const clearBtn = document.getElementById('search-clear-btn');
+      if (clearBtn) {
+        if ((input && input.value.trim() !== '') || searchResultMarkers.length > 0) {
+          clearBtn.style.display = 'flex';
+        } else {
+          clearBtn.style.display = 'none';
+        }
+      }
+    }
+
+    function clearSearchLocation() {
+      const input = document.getElementById('location-search-input');
+      if (input) input.value = '';
+
+      // Remove search result markers from Leaflet map
+      searchResultMarkers.forEach(m => map.removeLayer(m));
+      searchResultMarkers = [];
+
+      toggleSearchClearBtn();
+      showToast('Cleared search location pins');
+    }
+
     // Search Location using OpenStreetMap Nominatim API
     async function searchLocation() {
       const input = document.getElementById('location-search-input');
@@ -1055,6 +1104,7 @@
             searchResultMarkers.push(m);
           });
 
+          toggleSearchClearBtn();
           showToast(`📍 Map centered on: ${topResult.display_name.split(',')[0]}`);
         } else {
           showToast(`⚠️ Location not found.`);
