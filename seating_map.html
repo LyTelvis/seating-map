@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>Interactive Seating Map</title>
   
   <!-- Google Fonts -->
@@ -543,7 +546,7 @@
       🪑 Public Seating Tracker
     </div>
     <span class="header-badge" id="seating-count">0 seating locations</span>
-    <button class="view-toggle-btn" id="view-toggle-btn" onclick="toggleMapView()">🌍 World View</button>
+    <button class="view-toggle-btn" id="view-toggle-btn" onclick="toggleMapView()">🌐 World</button>
     <span class="admin-indicator" id="admin-tag" style="display: none;">Owner Edit Mode</span>
   </div>
 
@@ -584,17 +587,18 @@
       document.getElementById('admin-tag').style.display = 'inline';
     }
 
-    // Greater Vancouver Region Coordinates
-    const VANCOUVER_CENTER = [49.2785, -123.1175];
-    const VANCOUVER_ZOOM = 12;
+    // Greater Vancouver & Victoria / BC Region Bounding Box (Lat: 48.0 - 50.0, Lng: -124.5 - -122.0)
+    const DEFAULT_VANCOUVER_CENTER = [49.2785, -123.1175];
+    const DEFAULT_VANCOUVER_ZOOM = 12;
 
     let isWorldView = false;
     let globalBounds = [];
+    let metroVancouverBounds = [];
 
-    // Initialize Map default zoomed to Greater Vancouver Region
+    // Initialize Map
     const map = L.map('map', {
       zoomControl: true
-    }).setView(VANCOUVER_CENTER, VANCOUVER_ZOOM);
+    }).setView(DEFAULT_VANCOUVER_CENTER, DEFAULT_VANCOUVER_ZOOM);
 
     // Standard OpenStreetMap Tile Layer
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -606,17 +610,23 @@
     let tempMarker = null;
     let activePinningFilename = null;
 
-    function setVancouverView() {
+    function setMetroVancouverView() {
       isWorldView = false;
       const btn = document.getElementById('view-toggle-btn');
-      if (btn) btn.innerHTML = '🌍 World View';
-      map.setView(VANCOUVER_CENTER, VANCOUVER_ZOOM);
+      if (btn) btn.innerHTML = '🌐 World';
+      
+      if (metroVancouverBounds.length > 0) {
+        map.fitBounds(metroVancouverBounds, { padding: [40, 40], maxZoom: 14 });
+      } else {
+        map.setView(DEFAULT_VANCOUVER_CENTER, DEFAULT_VANCOUVER_ZOOM);
+      }
     }
 
     function setWorldView() {
       isWorldView = true;
       const btn = document.getElementById('view-toggle-btn');
-      if (btn) btn.innerHTML = '📍 Vancouver View';
+      if (btn) btn.innerHTML = '📍 Metro Vancouver';
+      
       if (globalBounds.length > 0) {
         map.fitBounds(globalBounds, { padding: [50, 50], maxZoom: 16 });
       }
@@ -624,7 +634,7 @@
 
     function toggleMapView() {
       if (isWorldView) {
-        setVancouverView();
+        setMetroVancouverView();
       } else {
         setWorldView();
       }
@@ -923,12 +933,18 @@
       if (count === 0) return;
 
       globalBounds = [];
+      metroVancouverBounds = [];
 
       seatingList.forEach(item => {
         if (!item.latitude || !item.longitude) return;
 
         const pos = [item.latitude, item.longitude];
         globalBounds.push(pos);
+
+        // Check if item falls in Metro Vancouver / Victoria / BC Coast region (Lat: 48.0 - 50.5, Lng: -125.0 - -121.0)
+        if (item.latitude >= 48.0 && item.latitude <= 50.5 && item.longitude >= -125.0 && item.longitude <= -121.0) {
+          metroVancouverBounds.push(pos);
+        }
 
         const customIcon = L.divIcon({
           html: createPinHtml('#ea4335', '🪑'),
@@ -991,9 +1007,9 @@
         markersGroup.addLayer(marker);
       });
 
-      // Default view is ALWAYS zoomed to Greater Vancouver Region
+      // Default view is ALWAYS Metro Vancouver bounds
       if (!isWorldView) {
-        setVancouverView();
+        setMetroVancouverView();
       } else {
         setWorldView();
       }
