@@ -137,6 +137,131 @@
       pointer-events: none;
     }
 
+    /* Side Photo Display Panel Drawer */
+    .side-photo-panel {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      width: 360px;
+      max-height: calc(100% - 100px);
+      background: rgba(255, 255, 255, 0.98);
+      backdrop-filter: blur(12px);
+      border-radius: 20px;
+      box-shadow: 0 12px 35px rgba(0, 0, 0, 0.2);
+      border: 1px solid rgba(226, 232, 240, 0.9);
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+      transform: translateX(400px);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .side-photo-panel.active {
+      transform: translateX(0);
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .side-panel-close-btn {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      z-index: 10;
+      background: rgba(15, 23, 42, 0.6);
+      color: white;
+      border: none;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      font-size: 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(4px);
+      transition: background 0.2s;
+    }
+
+    .side-panel-close-btn:hover {
+      background: rgba(15, 23, 42, 0.9);
+    }
+
+    .side-panel-img-container {
+      width: 100%;
+      height: 250px; /* Larger photo display */
+      background-color: #f1f5f9;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .side-panel-img-container img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      cursor: pointer;
+    }
+
+    .side-panel-body {
+      padding: 16px;
+      overflow-y: auto;
+    }
+
+    .side-panel-meta {
+      font-size: 12px;
+      color: #64748b;
+      margin-bottom: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .side-panel-comment-section {
+      margin-top: 12px;
+      border-top: 1px solid #f1f5f9;
+      padding-top: 12px;
+    }
+
+    .side-panel-comment-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #334155;
+      margin-bottom: 6px;
+    }
+
+    .side-panel-comment-text {
+      font-size: 13px;
+      color: #1e293b;
+      line-height: 1.5;
+      background: #f8fafc;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+      white-space: pre-wrap;
+    }
+
+    .side-panel-comment-textarea {
+      width: 100%;
+      height: 75px;
+      padding: 10px;
+      font-family: inherit;
+      font-size: 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      resize: vertical;
+      outline: none;
+    }
+
+    .side-panel-like-bar {
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid #f1f5f9;
+      display: flex;
+      justify-content: flex-end;
+    }
+
     /* Duplicate Warning Drawer Banner */
     .duplicate-banner {
       background: rgba(255, 255, 255, 0.98);
@@ -370,8 +495,8 @@
       transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
 
-    .marker-pin-wrapper:hover {
-      transform: scale(1.15) translateY(-4px);
+    .marker-pin-wrapper:hover, .marker-pin-wrapper.active {
+      transform: scale(1.2) translateY(-4px);
     }
 
     .marker-pin-svg {
@@ -388,85 +513,6 @@
       line-height: 1;
     }
 
-    /* Popup Styling */
-    .leaflet-popup-content-wrapper {
-      padding: 0;
-      border-radius: 14px;
-      overflow: hidden;
-      box-shadow: 0 12px 30px rgba(0,0,0,0.18);
-      border: 1px solid #e2e8f0;
-    }
-
-    .leaflet-popup-content {
-      margin: 0;
-      width: 280px !important;
-    }
-
-    .popup-image-container {
-      width: 100%;
-      height: 180px;
-      background-color: #f1f5f9;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .popup-image-container img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      cursor: pointer;
-    }
-
-    .popup-body {
-      padding: 14px;
-    }
-
-    .popup-meta {
-      font-size: 12px;
-      color: #64748b;
-      margin-bottom: 8px;
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-
-    .popup-comment-section {
-      margin-top: 10px;
-      border-top: 1px solid #f1f5f9;
-      padding-top: 10px;
-    }
-
-    .popup-comment-label {
-      font-size: 12px;
-      font-weight: 600;
-      color: #334155;
-      margin-bottom: 4px;
-    }
-
-    .popup-comment-text {
-      font-size: 13px;
-      color: #1e293b;
-      line-height: 1.4;
-      background: #f8fafc;
-      padding: 8px;
-      border-radius: 6px;
-      border: 1px solid #e2e8f0;
-      white-space: pre-wrap;
-    }
-
-    .popup-comment-textarea {
-      width: 100%;
-      height: 65px;
-      padding: 8px;
-      font-family: inherit;
-      font-size: 12px;
-      border: 1px solid #cbd5e1;
-      border-radius: 6px;
-      resize: vertical;
-      outline: none;
-      transition: border-color 0.2s;
-    }
-
     .save-btn {
       margin-top: 8px;
       width: 100%;
@@ -481,14 +527,6 @@
     }
 
     /* Like Button Bar */
-    .popup-like-bar {
-      margin-top: 12px;
-      padding-top: 10px;
-      border-top: 1px solid #f1f5f9;
-      display: flex;
-      justify-content: flex-end;
-    }
-
     .like-btn {
       display: flex;
       align-items: center;
@@ -580,6 +618,22 @@
     </div>
   </div>
 
+  <!-- Side Photo Display Panel Drawer (Unobscured Pin Icon + Larger Image) -->
+  <div class="side-photo-panel" id="side-photo-panel">
+    <button class="side-panel-close-btn" onclick="closeSidePanel()">✕</button>
+    <div class="side-panel-img-container">
+      <img id="side-panel-img" src="" alt="Seating Photo" onclick="window.open(this.src, '_blank')" />
+    </div>
+    <div class="side-panel-body">
+      <div class="side-panel-meta">
+        <span id="side-panel-coords">📍 0.00000, 0.00000</span>
+        <span id="side-panel-date">📅 N/A</span>
+      </div>
+      <div id="side-panel-comment-container"></div>
+      <div class="side-panel-like-bar" id="side-panel-like-container"></div>
+    </div>
+  </div>
+
   <div id="map"></div>
 
   <!-- Bottom Floating Header Bar -->
@@ -615,6 +669,7 @@
 
     let globalBounds = [];
     let metroVancouverBounds = [];
+    let activeSeatingItem = null;
 
     // Initialize Map with CartoDB Positron (Light Minimalist) permanently
     const map = L.map('map', {
@@ -631,6 +686,7 @@
     let activePinningFilename = null;
 
     function setMetroVancouverView() {
+      closeSidePanel();
       const btnVan = document.getElementById('btn-vancouver');
       const btnWorld = document.getElementById('btn-world');
       if (btnVan) btnVan.classList.add('active');
@@ -644,6 +700,7 @@
     }
 
     function setWorldView() {
+      closeSidePanel();
       const btnVan = document.getElementById('btn-vancouver');
       const btnWorld = document.getElementById('btn-world');
       if (btnWorld) btnWorld.classList.add('active');
@@ -653,6 +710,72 @@
         map.fitBounds(globalBounds, { padding: [50, 50], maxZoom: 16 });
       }
     }
+
+    function openSidePanel(item) {
+      activeSeatingItem = item;
+      const panel = document.getElementById('side-photo-panel');
+      const img = document.getElementById('side-panel-img');
+      const coords = document.getElementById('side-panel-coords');
+      const date = document.getElementById('side-panel-date');
+      const commentContainer = document.getElementById('side-panel-comment-container');
+      const likeContainer = document.getElementById('side-panel-like-container');
+
+      img.src = item.image_path || '';
+      coords.innerText = `📍 ${item.latitude.toFixed(5)}, ${item.longitude.toFixed(5)}`;
+      date.innerText = `📅 ${item.timestamp || 'N/A'}`;
+
+      const hasComment = item.comment && item.comment.trim() !== '';
+
+      if (isAdmin) {
+        commentContainer.innerHTML = `
+          <div class="side-panel-comment-section">
+            <div class="side-panel-comment-label">Description / Comment:</div>
+            <textarea id="comment-input-${item.id}" class="side-panel-comment-textarea" placeholder="Add your notes about this seating...">${item.comment || ''}</textarea>
+            <button class="save-btn" onclick="saveComment('${item.id}')">Save Comment</button>
+          </div>
+        `;
+      } else if (hasComment) {
+        commentContainer.innerHTML = `
+          <div class="side-panel-comment-section">
+            <div class="side-panel-comment-label">Description / Comment:</div>
+            <div class="side-panel-comment-text">${item.comment}</div>
+          </div>
+        `;
+      } else {
+        commentContainer.innerHTML = '';
+      }
+
+      const baseLikes = item.likes || 0;
+      const isLiked = localStorage.getItem('liked_' + item.id) === 'true';
+      const localDelta = parseInt(localStorage.getItem('liked_delta_' + item.id) || '0', 10);
+      const displayLikes = Math.max(0, baseLikes + localDelta);
+
+      likeContainer.innerHTML = `
+        <button id="like-btn-${item.id}" class="like-btn ${isLiked ? 'liked' : ''}" onclick="toggleLike('${item.id}', ${baseLikes})">
+          <span class="heart-icon">${isLiked ? '❤️' : '🤍'}</span>
+          <span id="like-text-${item.id}">${isLiked ? 'Liked' : 'Like'}</span>
+          <span class="like-badge" id="like-count-${item.id}">${displayLikes}</span>
+        </button>
+      `;
+
+      panel.classList.add('active');
+
+      // Zoom in close & offset map center slightly left so pin is unobscured by side panel
+      map.setView([item.latitude, item.longitude], 17, { animate: true });
+    }
+
+    function closeSidePanel() {
+      const panel = document.getElementById('side-photo-panel');
+      if (panel) panel.classList.remove('active');
+      activeSeatingItem = null;
+    }
+
+    // Close side panel when clicking empty area on map
+    map.on('click', function(e) {
+      if (!activePinningFilename) {
+        closeSidePanel();
+      }
+    });
 
     function showToast(message) {
       const toast = document.getElementById('toast');
@@ -798,6 +921,7 @@
     }
 
     function enterPinMode(filename) {
+      closeSidePanel();
       activePinningFilename = filename;
       document.getElementById('header-bar').style.display = 'none';
       document.querySelector('.banner-container').style.display = 'none';
@@ -968,62 +1092,12 @@
           popupAnchor: [0, -40]
         });
 
-        const imagePath = item.image_path || '';
-        const baseLikes = item.likes || 0;
-        const isLiked = localStorage.getItem('liked_' + item.id) === 'true';
-        const localDelta = parseInt(localStorage.getItem('liked_delta_' + item.id) || '0', 10);
-        const displayLikes = Math.max(0, baseLikes + localDelta);
+        const marker = L.marker(pos, { icon: customIcon });
 
-        const hasComment = item.comment && item.comment.trim() !== '';
-
-        let popupContent = `
-          <div class="popup-image-container">
-            <img src="${imagePath}" alt="Seating Photo" onclick="window.open('${imagePath}', '_blank')" />
-          </div>
-          <div class="popup-body">
-            <div class="popup-meta">
-              <span>📍 ${item.latitude.toFixed(5)}, ${item.longitude.toFixed(5)}</span>
-              <span>📅 ${item.timestamp || 'N/A'}</span>
-            </div>
-        `;
-
-        if (isAdmin) {
-          popupContent += `
-            <div class="popup-comment-section">
-              <div class="popup-comment-label">Description / Comment:</div>
-              <textarea id="comment-input-${item.id}" class="popup-comment-textarea" placeholder="Add your notes about this seating...">${item.comment || ''}</textarea>
-              <button class="save-btn" onclick="saveComment('${item.id}')">Save Comment</button>
-            </div>
-          `;
-        } else if (hasComment) {
-          popupContent += `
-            <div class="popup-comment-section">
-              <div class="popup-comment-label">Description / Comment:</div>
-              <div class="popup-comment-text">${item.comment}</div>
-            </div>
-          `;
-        }
-
-        popupContent += `
-            <div class="popup-like-bar">
-              <button id="like-btn-${item.id}" class="like-btn ${isLiked ? 'liked' : ''}" onclick="toggleLike('${item.id}', ${baseLikes})">
-                <span class="heart-icon">${isLiked ? '❤️' : '🤍'}</span>
-                <span id="like-text-${item.id}">${isLiked ? 'Liked' : 'Like'}</span>
-                <span class="like-badge" id="like-count-${item.id}">${displayLikes}</span>
-              </button>
-            </div>
-          </div>
-        `;
-
-        const marker = L.marker(pos, { icon: customIcon })
-          .bindPopup(popupContent, { maxWidth: 280 });
-
-        // When user clicks pin icon:
-        // 1. Shift view slightly north (+0.0012 lat) so clicked pin sits lower and popup card displays perfectly in viewport center
-        // 2. Smoothly zoom in to level 17
-        marker.on('click', function() {
-          const popupCenter = [pos[0] + 0.0012, pos[1]];
-          map.setView(popupCenter, 17, { animate: true });
+        // On pin click: open side photo panel (leaving pin icon 100% unobscured and displaying a larger photo)
+        marker.on('click', function(e) {
+          L.DomEvent.stopPropagation(e);
+          openSidePanel(item);
         });
 
         markersGroup.addLayer(marker);
