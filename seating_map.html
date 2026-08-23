@@ -185,10 +185,6 @@
       cursor: pointer;
     }
 
-    .btn-add-anyway:hover {
-      background: #15803d;
-    }
-
     .btn-skip-dupe {
       flex: 1;
       background: #dc2626;
@@ -199,10 +195,6 @@
       font-size: 11px;
       font-weight: 600;
       cursor: pointer;
-    }
-
-    .btn-skip-dupe:hover {
-      background: #b91c1c;
     }
 
     /* Unmapped Photos Drawer Banner */
@@ -280,10 +272,6 @@
       cursor: pointer;
     }
 
-    .btn-pin:hover {
-      background: #0369a1;
-    }
-
     .btn-skip {
       flex: 1;
       background: #ef4444;
@@ -294,10 +282,6 @@
       font-size: 11px;
       font-weight: 600;
       cursor: pointer;
-    }
-
-    .btn-skip:hover {
-      background: #dc2626;
     }
 
     /* Floating Pinning Instruction Bar */
@@ -453,6 +437,57 @@
       font-weight: 600;
       font-size: 12px;
       cursor: pointer;
+    }
+
+    /* Like Button Bar */
+    .popup-like-bar {
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px solid #f1f5f9;
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .like-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 20px;
+      border: 1px solid #e2e8f0;
+      background: #ffffff;
+      color: #475569;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+
+    .like-btn:hover {
+      background: #f8fafc;
+      border-color: #cbd5e1;
+      transform: scale(1.05);
+    }
+
+    .like-btn.liked {
+      background: #fef2f2;
+      border-color: #fca5a5;
+      color: #dc2626;
+    }
+
+    .like-badge {
+      background: #f1f5f9;
+      color: #334155;
+      padding: 2px 7px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .like-btn.liked .like-badge {
+      background: #fee2e2;
+      color: #b91c1c;
     }
 
     .toast {
@@ -790,6 +825,44 @@
       }
     }
 
+    function toggleLike(itemId, baseLikes) {
+      const storageKey = 'liked_' + itemId;
+      const isCurrentlyLiked = localStorage.getItem(storageKey) === 'true';
+      const countSpan = document.getElementById(`like-count-${itemId}`);
+      const textSpan = document.getElementById(`like-text-${itemId}`);
+      const btn = document.getElementById(`like-btn-${itemId}`);
+
+      let localDelta = parseInt(localStorage.getItem('liked_delta_' + itemId) || '0', 10);
+
+      if (isCurrentlyLiked) {
+        // Unlike
+        localStorage.removeItem(storageKey);
+        localDelta -= 1;
+        localStorage.setItem('liked_delta_' + itemId, localDelta.toString());
+        if (btn) btn.classList.remove('liked');
+        if (textSpan) textSpan.innerText = 'Like';
+        if (countSpan) countSpan.innerText = Math.max(0, baseLikes + localDelta);
+      } else {
+        // Like
+        localStorage.setItem(storageKey, 'true');
+        localDelta += 1;
+        localStorage.setItem('liked_delta_' + itemId, localDelta.toString());
+        if (btn) btn.classList.add('liked');
+        if (textSpan) textSpan.innerText = 'Liked';
+        if (countSpan) countSpan.innerText = baseLikes + localDelta;
+        showToast('❤️ You liked this seating location!');
+      }
+
+      // If running on localhost server, send API request to persist in database
+      if (isLocalhost && !isCurrentlyLiked) {
+        fetch('/api/like', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: itemId })
+        }).catch(err => console.log('Local like sync skipped'));
+      }
+    }
+
     function renderMarkers(seatingList) {
       markersGroup.clearLayers();
       const count = seatingList.length;
@@ -814,6 +887,12 @@
         });
 
         const imagePath = item.image_path || '';
+        const baseLikes = item.likes || 0;
+        const isLiked = localStorage.getItem('liked_' + item.id) === 'true';
+        const localDelta = parseInt(localStorage.getItem('liked_delta_' + item.id) || '0', 10);
+        const displayLikes = Math.max(0, baseLikes + localDelta);
+
+        const hasComment = item.comment && item.comment.trim() !== '';
 
         let popupContent = `
           <div class="popup-image-container">
@@ -824,22 +903,36 @@
               <span>📍 ${item.latitude.toFixed(5)}, ${item.longitude.toFixed(5)}</span>
               <span>📅 ${item.timestamp || 'N/A'}</span>
             </div>
-            <div class="popup-comment-section">
-              <div class="popup-comment-label">Description / Comment:</div>
         `;
 
+        // Description / Comment Section logic:
+        // Admin Mode: Always show textarea to edit/save notes.
+        // Public View Mode: Show ONLY if comment is non-empty!
         if (isAdmin) {
           popupContent += `
-            <textarea id="comment-input-${item.id}" class="popup-comment-textarea" placeholder="Add your notes about this seating...">${item.comment || ''}</textarea>
-            <button class="save-btn" onclick="saveComment('${item.id}')">Save Comment</button>
+            <div class="popup-comment-section">
+              <div class="popup-comment-label">Description / Comment:</div>
+              <textarea id="comment-input-${item.id}" class="popup-comment-textarea" placeholder="Add your notes about this seating...">${item.comment || ''}</textarea>
+              <button class="save-btn" onclick="saveComment('${item.id}')">Save Comment</button>
+            </div>
           `;
-        } else {
+        } else if (hasComment) {
           popupContent += `
-            <div class="popup-comment-text">${item.comment ? item.comment : '<em>No comment provided.</em>'}</div>
+            <div class="popup-comment-section">
+              <div class="popup-comment-label">Description / Comment:</div>
+              <div class="popup-comment-text">${item.comment}</div>
+            </div>
           `;
         }
 
+        // Like Button Bar
         popupContent += `
+            <div class="popup-like-bar">
+              <button id="like-btn-${item.id}" class="like-btn ${isLiked ? 'liked' : ''}" onclick="toggleLike('${item.id}', ${baseLikes})">
+                <span class="heart-icon">${isLiked ? '❤️' : '🤍'}</span>
+                <span id="like-text-${item.id}">${isLiked ? 'Liked' : 'Like'}</span>
+                <span class="like-badge" id="like-count-${item.id}">${displayLikes}</span>
+              </button>
             </div>
           </div>
         `;

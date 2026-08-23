@@ -38,7 +38,11 @@ def load_data():
     if os.path.exists(DATA_FILE):
         try:
             with open(DATA_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
+                data = json.load(f)
+                for item in data:
+                    if "likes" not in item:
+                        item["likes"] = 0
+                return data
         except Exception as e:
             print(f"Error loading {DATA_FILE}: {e}")
     return []
@@ -49,7 +53,7 @@ def save_data(data):
     save_csv(data)
 
 def save_csv(data):
-    lines = ["id,filename,image_path,latitude,longitude,timestamp,comment\n"]
+    lines = ["id,filename,image_path,latitude,longitude,timestamp,comment,likes\n"]
     for item in data:
         cid = item.get("id", "")
         fn = item.get("filename", "")
@@ -58,7 +62,8 @@ def save_csv(data):
         lng = item.get("longitude", "")
         ts = item.get("timestamp", "")
         c = item.get("comment", "").replace('"', '""')
-        lines.append(f'"{cid}","{fn}","{ip}",{lat},{lng},"{ts}","{c}"\n')
+        lk = item.get("likes", 0)
+        lines.append(f'"{cid}","{fn}","{ip}",{lat},{lng},"{ts}","{c}",{lk}\n')
     with open(CSV_FILE, "w", encoding="utf-8") as f:
         f.writelines(lines)
 
@@ -309,7 +314,8 @@ def process_inbox():
                 "latitude": round(lat, 6),
                 "longitude": round(lng, 6),
                 "timestamp": timestamp or now_str,
-                "comment": ""
+                "comment": "",
+                "likes": 0
             })
             processed_count += 1
             print(f"  🟢 [AUTO MAPPED] '{filename}' -> Mapped at ({lat:.5f}, {lng:.5f})")
@@ -357,7 +363,32 @@ class SeatingMapHTTPHandler(http.server.SimpleHTTPRequestHandler):
         content_length = int(self.headers.get("Content-Length", 0))
         post_data = self.rfile.read(content_length)
 
-        if self.path == "/api/confirm_duplicate":
+        if self.path == "/api/like":
+            try:
+                payload = json.loads(post_data.decode("utf-8"))
+                item_id = payload.get("id")
+
+                data = load_data()
+                new_likes = 0
+                for item in data:
+                    if item.get("id") == item_id or item.get("image_path") == item_id:
+                        item["likes"] = item.get("likes", 0) + 1
+                        new_likes = item["likes"]
+                        break
+
+                save_data(data)
+                sync_to_github()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": True, "likes": new_likes}).encode("utf-8"))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": False, "error": str(e)}).encode("utf-8"))
+
+        elif self.path == "/api/confirm_duplicate":
             try:
                 payload = json.loads(post_data.decode("utf-8"))
                 filename = payload.get("filename")
@@ -394,7 +425,8 @@ class SeatingMapHTTPHandler(http.server.SimpleHTTPRequestHandler):
                         "latitude": round(lat, 6) if lat is not None else 0.0,
                         "longitude": round(lng, 6) if lng is not None else 0.0,
                         "timestamp": timestamp or now_str,
-                        "comment": ""
+                        "comment": "",
+                        "likes": 0
                     })
                     save_data(data)
                     sync_to_github()
@@ -457,7 +489,8 @@ class SeatingMapHTTPHandler(http.server.SimpleHTTPRequestHandler):
                     "latitude": round(lat, 6),
                     "longitude": round(lng, 6),
                     "timestamp": now_str,
-                    "comment": comment
+                    "comment": comment,
+                    "likes": 0
                 })
 
                 save_data(data)
