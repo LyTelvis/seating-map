@@ -720,9 +720,7 @@
       opacity: 1;
     }
 
-    /* ==========================================================================
-       MOBILE RESPONSIVE STYLES (Screen Width <= 768px)
-       ========================================================================== */
+    /* Mobile Responsive Styles (Screen Width <= 768px) */
     @media (max-width: 768px) {
       /* Single Unified Bottom Control Bar on Mobile */
       .header-bar {
@@ -767,7 +765,7 @@
         bottom: 95px;
         left: 3%;
         width: 94%;
-        max-height: 52vh;
+        max-height: 50vh;
         border-radius: 20px;
         transform: translateY(150%);
         box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
@@ -779,7 +777,7 @@
       }
 
       .side-panel-img-container {
-        height: 160px;
+        height: 150px;
       }
 
       .nav-arrow-btn {
@@ -789,7 +787,7 @@
       }
 
       .side-panel-body {
-        padding: 12px;
+        padding: 10px;
       }
 
       .banner-container {
@@ -1219,11 +1217,11 @@
       const currentZoom = map.getZoom();
       const targetZoom = Math.max(currentZoom, 15);
 
-      // On Mobile: Offset latitude NORTH (+latOffset) so pin sits in top half of screen above bottom drawer & bottom bar
-      // On Desktop: Offset longitude WEST (-lngOffset) so pin sits to the RIGHT of left drawer
+      // On Mobile: Subtract latitude offset so map center is SOUTH of pin -> pin renders high up in TOP ~20% of screen!
+      // On Desktop: Subtract longitude offset so map center is WEST of pin -> pin renders to the RIGHT of left drawer!
       if (isMobile) {
-        const latOffset = 0.0065 / Math.pow(2, targetZoom - 15);
-        const balancedCenter = [item.latitude + latOffset, item.longitude];
+        const latOffset = 0.0075 / Math.pow(2, targetZoom - 15);
+        const balancedCenter = [item.latitude - latOffset, item.longitude];
         map.setView(balancedCenter, targetZoom, { animate: true });
       } else {
         const lngOffset = 0.0070 / Math.pow(2, targetZoom - 15);
