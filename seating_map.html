@@ -54,7 +54,7 @@
       border: 1px solid rgba(226, 232, 240, 0.9);
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
       flex-wrap: wrap;
       justify-content: center;
       transition: opacity 0.3s ease;
@@ -78,7 +78,7 @@
       border-radius: 12px;
     }
 
-    .view-toggle-btn {
+    .view-toggle-btn, .style-select-btn {
       background: #f1f5f9;
       color: #0f172a;
       border: 1px solid #cbd5e1;
@@ -93,7 +93,7 @@
       transition: all 0.2s ease;
     }
 
-    .view-toggle-btn:hover {
+    .view-toggle-btn:hover, .style-select-btn:hover {
       background: #e2e8f0;
       border-color: #94a3b8;
       transform: scale(1.04);
@@ -575,6 +575,7 @@
     </div>
     <span class="header-badge" id="seating-count">0 seating locations</span>
     <button class="view-toggle-btn" id="view-toggle-btn" onclick="toggleMapView()">🌐 World</button>
+    <button class="style-select-btn" id="style-toggle-btn" onclick="cycleMapStyle()">🗺️ Style: Voyager</button>
     <span class="admin-indicator" id="admin-tag" style="display: none;">Owner Edit Mode</span>
   </div>
 
@@ -597,16 +598,60 @@
     let globalBounds = [];
     let metroVancouverBounds = [];
 
+    // Base Map Tile Options
+    const MAP_STYLES = [
+      {
+        id: 'voyager',
+        name: 'Voyager (Soft Clean)',
+        url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+      },
+      {
+        id: 'positron',
+        name: 'Light Minimalist',
+        url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+      },
+      {
+        id: 'dark',
+        name: 'Dark Minimalist',
+        url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+      },
+      {
+        id: 'osm',
+        name: 'Standard OSM',
+        url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      }
+    ];
+
+    let currentStyleIndex = 0; // Default: CartoDB Voyager
+
     // Initialize Map
     const map = L.map('map', {
       zoomControl: true
     }).setView(DEFAULT_VANCOUVER_CENTER, DEFAULT_VANCOUVER_ZOOM);
 
-    // Standard OpenStreetMap Tile Layer
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    let baseTileLayer = L.tileLayer(MAP_STYLES[0].url, {
+      attribution: MAP_STYLES[0].attribution,
       maxZoom: 19
     }).addTo(map);
+
+    function cycleMapStyle() {
+      currentStyleIndex = (currentStyleIndex + 1) % MAP_STYLES.length;
+      const newStyle = MAP_STYLES[currentStyleIndex];
+      
+      map.removeLayer(baseTileLayer);
+      baseTileLayer = L.tileLayer(newStyle.url, {
+        attribution: newStyle.attribution,
+        maxZoom: 19
+      }).addTo(map);
+
+      const btn = document.getElementById('style-toggle-btn');
+      if (btn) btn.innerHTML = `🗺️ Style: ${newStyle.name.split(' ')[0]}`;
+      showToast(`Switched map style to ${newStyle.name}`);
+    }
 
     let markersGroup = L.featureGroup().addTo(map);
     let tempMarker = null;
