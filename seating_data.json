@@ -1043,5 +1043,16 @@
     "timestamp": "2026-08-23 12:23:44",
     "comment": "",
     "likes": 0
+  },
+  {
+    "id": "seating_1788020090_0",
+    "filename": "IMG_6169.jpeg",
+    "image_path": "02_Mapped/IMG_6169.jpeg",
+    "thumb_path": "02_Mapped/thumbs/thumb_IMG_6169.jpg",
+    "latitude": 49.262028,
+    "longitude": -123.101831,
+    "timestamp": "2026-08-28 18:50:59",
+    "comment": "",
+    "likes": 0
   }
 ]
