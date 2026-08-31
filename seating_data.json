@@ -1054,5 +1054,38 @@
     "timestamp": "2026-08-28 18:50:59",
     "comment": "",
     "likes": 0
+  },
+  {
+    "id": "seating_1788154065_0",
+    "filename": "IMG_6179.jpeg",
+    "image_path": "02_Mapped/IMG_6179.jpeg",
+    "thumb_path": "02_Mapped/thumbs/thumb_IMG_6179.jpg",
+    "latitude": 49.224786,
+    "longitude": -122.999244,
+    "timestamp": "2026-08-30 18:39:35",
+    "comment": "",
+    "likes": 0
+  },
+  {
+    "id": "seating_1788154065_1",
+    "filename": "IMG_6178.jpeg",
+    "image_path": "02_Mapped/IMG_6178.jpeg",
+    "thumb_path": "02_Mapped/thumbs/thumb_IMG_6178.jpg",
+    "latitude": 49.271186,
+    "longitude": -123.103836,
+    "timestamp": "2026-08-30 15:33:07",
+    "comment": "",
+    "likes": 0
+  },
+  {
+    "id": "seating_1788154065_2",
+    "filename": "IMG_6177.jpeg",
+    "image_path": "02_Mapped/IMG_6177.jpeg",
+    "thumb_path": "02_Mapped/thumbs/thumb_IMG_6177.jpg",
+    "latitude": 49.2709,
+    "longitude": -123.103547,
+    "timestamp": "2026-08-30 15:32:21",
+    "comment": "",
+    "likes": 0
   }
 ]
